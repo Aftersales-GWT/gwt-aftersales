@@ -121,6 +121,75 @@ tr.tot td:first-child{text-align:left;padding-left:14px}
 .prog-bar{height:5px;background:#e2e8f0;border-radius:3px;flex:1;overflow:hidden;min-width:40px}
 .prog-fill{height:100%;border-radius:3px}
 
+/* ── DASHBOARD ── */
+.db-main{display:flex;flex-direction:column;gap:14px;padding:4px 0}
+.db-kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}
+.db-kpi{background:#fff;border-radius:10px;padding:13px 15px;border:1px solid #e2e8f0;border-top:3px solid #ccc;transition:box-shadow .2s}
+.db-kpi:hover{box-shadow:0 4px 16px rgba(0,0,0,.09)}
+.db-kpi.blue{border-top-color:#003366}.db-kpi.green{border-top-color:#16a34a}
+.db-kpi.red{border-top-color:#dc2626}.db-kpi.amber{border-top-color:#d97706}
+.db-kpi.purple{border-top-color:#7c3aed}.db-kpi.teal{border-top-color:#0891b2}
+.db-kpi-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:4px}
+.db-kpi-val{font-size:19px;font-weight:700;line-height:1.1;color:#1a1a2e}
+.db-kpi-sub{font-size:10px;color:#bbb;margin-top:3px;display:flex;align-items:center;gap:4px}
+.db-badge-up{background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700}
+.db-badge-dn{background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700}
+.db-two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.db-sec{background:#fff;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden}
+.db-sec-hdr{padding:11px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.db-sec-hdr:hover{background:#fafbff}
+.db-sec-title{font-size:12.5px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:7px}
+.db-sec-body{padding:14px 16px}
+.db-sec-toggle{font-size:14px;color:#94a3b8;transition:transform .2s}
+.db-sec.collapsed .db-sec-toggle{transform:rotate(-90deg)}
+.db-sec.collapsed .db-sec-body{display:none}
+.db-aging-row{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:10px}
+.db-ag0{background:#f0fdf4;border-color:#86efac;color:#166534}
+.db-ag1{background:#fefce8;border-color:#fde047;color:#854d0e}
+.db-ag2{background:#fff7ed;border-color:#fdba74;color:#9a3412}
+.db-ag3{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+.db-ag4{background:#fdf4ff;border-color:#e879f9;color:#701a75}
+.db-ag-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.db-ag-val{font-size:12px;font-weight:800;font-family:'Courier New',monospace}
+.db-ag-pct{font-size:9px;font-weight:700;margin-top:2px;opacity:.85}
+.db-funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.db-funnel-lbl{width:115px;font-size:11px;font-weight:600;color:#374151;text-align:right;flex-shrink:0}
+.db-funnel-bar-wrap{flex:1;background:#f1f5f9;border-radius:5px;overflow:hidden;height:24px}
+.db-funnel-bar{height:100%;border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;font-size:10.5px;font-weight:700;color:#fff;min-width:2px}
+.db-funnel-cnt{width:28px;font-size:11px;font-weight:700;flex-shrink:0}
+.db-pva-legend{display:flex;gap:10px;justify-content:center;margin-bottom:7px}
+.db-pva-legend span{display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b}
+.db-pva-dot{width:10px;height:10px;border-radius:2px}
+.db-pva-months{display:flex;gap:3px;overflow-x:auto;padding-bottom:3px}
+.db-pva-col{flex:0 0 auto;width:50px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.db-pva-mon{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;text-align:center}
+.db-pva-bars{display:flex;gap:2px;align-items:flex-end;height:70px}
+.db-pva-bar{width:16px;border-radius:3px 3px 0 0}
+.db-pva-ach{font-size:9px;font-weight:700;text-align:center}
+.db-pva-ach.over{color:#16a34a}.db-pva-ach.under{color:#dc2626}.db-pva-ach.na{color:#94a3b8}
+.db-prog-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.db-prog-lbl{width:105px;font-size:10.5px;color:#374151;font-weight:500;flex-shrink:0}
+.db-prog-wrap{flex:1;display:flex;align-items:center;gap:5px}
+.db-prog-bar{height:7px;background:#e2e8f0;border-radius:4px;flex:1;overflow:hidden}
+.db-prog-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.db-prog-pct{width:34px;font-size:10px;font-weight:700;text-align:right;flex-shrink:0}
+.db-late-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f1f5f9}
+.db-late-row:last-child{border-bottom:none}
+.db-late-rank{width:20px;height:20px;border-radius:50%;background:#fee2e2;color:#991b1b;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.db-late-name{flex:1;font-size:11px;font-weight:600;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.db-late-days{font-size:10px;color:#64748b;flex-shrink:0;width:50px;text-align:right}
+.db-late-amt{font-size:11px;font-family:'Courier New',monospace;color:#991b1b;font-weight:700;flex-shrink:0;margin-left:4px}
+.db-order-table{width:100%;border-collapse:collapse;font-size:11px}
+.db-order-table thead tr{background:#003366}
+.db-order-table thead th{color:#fff;padding:7px 9px;text-align:left;font-weight:600;font-size:10px;white-space:nowrap}
+.db-order-table thead th.r{text-align:right}
+.db-order-table tbody tr{border-bottom:1px solid #f1f5f9}
+.db-order-table tbody tr:hover{background:#f8fafc}
+.db-order-table tbody td{padding:6px 9px;color:#374151}
+.db-delay-late{background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700;display:inline-block}
+.db-delay-ok{color:#16a34a;font-weight:700;font-size:10px}
+.db-delay-na{color:#94a3b8;font-size:10px}
+
 @media print{
   body{background:#fff}
   .app-header,.slide-nav,.group-subnav,.toolbar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -134,6 +203,7 @@ tr.tot td:first-child{text-align:left;padding-left:14px}
   .print-break{page-break-after:always;break-after:page}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -195,6 +265,7 @@ const CLIENT_GRADES = {
 
 /* ── SLIDE DEFINITIONS ── */
 const SLIDES = [
+  {id:'s-dashboard',label:'Dashboard',                 toolbar:'dashboard',subnav:false},
   {id:'s-cover',    label:'Slide 1 – Cover',          toolbar:'none',    subnav:false},
   {id:'s-guide',    label:'Slide 2 – Guidelines',     toolbar:'none',    subnav:false},
   {id:'s-sales-ov', label:'Slide 3 – Sales Overview', toolbar:'salesov', subnav:false},
@@ -202,14 +273,21 @@ const SLIDES = [
   {id:'s-rec',      label:'Slide 5 – AR & Recovery',  toolbar:'rec',     subnav:true},
   {id:'s-order',    label:'Slide 6 – Order Status',   toolbar:'order',   subnav:true},
   {id:'s-late',     label:'Slide 7 – Late Payers',    toolbar:'late',    subnav:false},
+  {id:'s-inv-plan', label:'Slide 8 – Invoice Plan vs Actual',    toolbar:'invplan', subnav:false},
+  {id:'s-pay-tgt',  label:'Slide 9 – Payment Target vs Actual', toolbar:'paytgt',  subnav:false},
 ];
 
-let activeSlide = 's-sales-ov';
+let activeSlide = 's-dashboard';
 let activeGroup = 'AMC';
 let soGroup = 'all'; // Slide 3 group filter
+let soYear  = '2026'; // Slide 3 year filter
 let soChartsVisible = true; // Slide 3 charts visibility
 let oChallengesOnly = false; // Slide 6 challenges filter
 let rNotesOnly = false;      // Slide 5 notes filter
+let ipYear='all',ipMonth='all',ipGroup='all'; // Slide 8
+let ipChartVisible=true,ipCumulative=false;
+let ptYear='all',ptMonth='all',ptGroup='all'; // Slide 9
+let ptChartVisible=true,ptCumulative=false;
 
 /* ── DATA ── */
 
@@ -352,6 +430,8 @@ async function fetchLiveData() {
             inv:        (r['Invoice #']||'').trim(),
             iDate:      cleanDate(r['Invoice Date']),
             planDate:   cleanDate(r['Invoice Plan Date']),
+            invPlanDate:cleanDate(r['Invoice Plan Date']||r['Invoice Plan date']||r['Plan Date']),
+            _hasRealPlanDate: !!(r['Invoice Plan Date']||r['Invoice Plan date']||r['Plan Date']),
             invPlan:    cleanNum(r['Invoice Plan + TAX']||r['Invoice Plan Amount']),
             iAmt,
             payRec,
@@ -421,6 +501,7 @@ async function fetchLiveData() {
     if(statusEl) statusEl.textContent = '✅ Live data loaded';
     setTimeout(()=>{ if(statusEl) statusEl.textContent=''; }, 3000);
     buildGroupSubnav();
+    buildToolbar();
     renderActive();
     dataLoaded = true;
 
@@ -552,16 +633,106 @@ function buildToolbar(){
     tb.innerHTML=printBtn;
     return;
   }
-  if(slide.toolbar==='salesov'){
+  if(slide.toolbar==='dashboard'){
     tb.innerHTML=`
       <span class="flbl">Year</span>
-      <select class="fsel" id="soYear" onchange="renderActive()">
+      <select class="fsel" id="dbYear" onchange="renderActive()">
         <option value="all">All Years</option>
-        <option value="2022">2022</option>
-        <option value="2023">2023</option>
         <option value="2024">2024</option>
         <option value="2025">2025</option>
         <option value="2026" selected>2026</option>
+      </select>
+      <div class="fdiv"></div>
+      <span class="flbl">Month</span>
+      <select class="fsel" id="dbMonth" onchange="renderActive()">
+        <option value="all">All Months</option>
+        <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+        <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+        <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+        <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+      </select>
+      <div class="fdiv"></div>
+      <span class="flbl">Group</span>
+      <select class="fsel" id="dbGroup" onchange="renderActive()">
+        <option value="all">All Groups</option>
+        ${GROUPS.map(g=>'<option>'+g+'</option>').join('')}
+      </select>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">${printBtn}</div>`;
+    tb.style.flexWrap='wrap';
+    return;
+  }
+  if(slide.toolbar==='invplan'){
+    const ipTillActive = ipMonth!=='all' && ipCumulative;
+    tb.innerHTML=`
+      <span class="flbl">Year</span>
+      <select class="fsel" id="ipYearSel" onchange="ipYear=this.value;buildToolbar();renderActive()">
+        <option value="all" ${ipYear==='all'?'selected':''}>All Years</option>
+        <option value="2024" ${ipYear==='2024'?'selected':''}>2024</option>
+        <option value="2025" ${ipYear==='2025'?'selected':''}>2025</option>
+        <option value="2026" ${ipYear==='2026'?'selected':''}>2026</option>
+      </select>
+      <div class="fdiv"></div>
+      <span class="flbl">Month</span>
+      <div style="display:flex;gap:3px;flex-wrap:wrap">${_monthBtns(ipMonth,'ipMonth')}</div>
+      <div class="fdiv"></div>
+      <span class="flbl">Group</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${_grpBtns(ipGroup,'ipGroup')}</div>
+      <div class="fdiv"></div>
+      <button onclick="ipCumulative=!ipCumulative;buildToolbar();renderActive()"
+        title="${ipMonth==='all'?'Select a specific month first to use Till Month':'Show data from Jan up to selected month'}"
+        style="background:${ipTillActive?'#0891b2':'#fff'};color:${ipTillActive?'#fff':'#0891b2'};border:2px solid #0891b2;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:${ipMonth==='all'?'not-allowed':'pointer'};opacity:${ipMonth==='all'?'0.4':'1'};white-space:nowrap"
+        ${ipMonth==='all'?'disabled':''}>
+        ${ipTillActive?'✓ Till Month':'↗ Till Month'}
+      </button>
+      <button onclick="ipChartVisible=!ipChartVisible;renderActive()"
+        style="background:${ipChartVisible?'#f1f5f9':'#003366'};color:${ipChartVisible?'#374151':'#fff'};border:1.5px solid ${ipChartVisible?'#cbd5e1':'#003366'};border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+        ${ipChartVisible?'📊 Hide Chart':'📊 Show Chart'}
+      </button>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">${printBtn}</div>`;
+    tb.style.flexWrap='wrap';
+    return;
+  }
+  if(slide.toolbar==='paytgt'){
+    const ptTillActive = ptMonth!=='all' && ptCumulative;
+    tb.innerHTML=`
+      <span class="flbl">Year</span>
+      <select class="fsel" id="ptYearSel" onchange="ptYear=this.value;buildToolbar();renderActive()">
+        <option value="all" ${ptYear==='all'?'selected':''}>All Years</option>
+        <option value="2024" ${ptYear==='2024'?'selected':''}>2024</option>
+        <option value="2025" ${ptYear==='2025'?'selected':''}>2025</option>
+        <option value="2026" ${ptYear==='2026'?'selected':''}>2026</option>
+      </select>
+      <div class="fdiv"></div>
+      <span class="flbl">Month</span>
+      <div style="display:flex;gap:3px;flex-wrap:wrap">${_monthBtns(ptMonth,'ptMonth')}</div>
+      <div class="fdiv"></div>
+      <span class="flbl">Group</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${_grpBtns(ptGroup,'ptGroup')}</div>
+      <div class="fdiv"></div>
+      <button onclick="ptCumulative=!ptCumulative;buildToolbar();renderActive()"
+        title="${ptMonth==='all'?'Select a specific month first to use Till Month':'Show data from Jan up to selected month'}"
+        style="background:${ptTillActive?'#0891b2':'#fff'};color:${ptTillActive?'#fff':'#0891b2'};border:2px solid #0891b2;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:${ptMonth==='all'?'not-allowed':'pointer'};opacity:${ptMonth==='all'?'0.4':'1'};white-space:nowrap"
+        ${ptMonth==='all'?'disabled':''}>
+        ${ptTillActive?'✓ Till Month':'↗ Till Month'}
+      </button>
+      <button onclick="ptChartVisible=!ptChartVisible;renderActive()"
+        style="background:${ptChartVisible?'#f1f5f9':'#003366'};color:${ptChartVisible?'#374151':'#fff'};border:1.5px solid ${ptChartVisible?'#cbd5e1':'#003366'};border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+        ${ptChartVisible?'📊 Hide Chart':'📊 Show Chart'}
+      </button>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">${printBtn}</div>`;
+    tb.style.flexWrap='wrap';
+    return;
+  }
+  if(slide.toolbar==='salesov'){
+    tb.innerHTML=`
+      <span class="flbl">Year</span>
+      <select class="fsel" id="soYear" onchange="soYear=this.value;buildToolbar();renderActive()">
+        <option value="all"${soYear==='all'?' selected':''}>All Years</option>
+        <option value="2022"${soYear==='2022'?' selected':''}>2022</option>
+        <option value="2023"${soYear==='2023'?' selected':''}>2023</option>
+        <option value="2024"${soYear==='2024'?' selected':''}>2024</option>
+        <option value="2025"${soYear==='2025'?' selected':''}>2025</option>
+        <option value="2026"${soYear==='2026'?' selected':''}>2026</option>
       </select>
       <div class="fdiv"></div>
       <span class="flbl">Group</span>
@@ -577,11 +748,10 @@ function buildToolbar(){
           const bdr  = activeCol;
           const shadow = isActive ? 'box-shadow:0 0 0 3px '+activeCol+'55;' : '';
           const opacity = isActive ? 'opacity:1;' : 'opacity:0.82;';
-          const curYear = (document.getElementById('soYear')||{}).value||'all';
           const salesRows = SALES_DATA.filter(r=>{
             const gn = r.group.replace('RR-Trade','Re-Routing').replace('RR-Retrofit','Retrofit');
             const grpMatch = isAll || gn===g || r.group===g;
-            const yrMatch  = curYear==='all' || r.salesYear===parseInt(curYear);
+            const yrMatch  = soYear==='all' || r.salesYear===parseInt(soYear);
             return grpMatch && yrMatch;
           });
           const cnt = salesRows.length>0 ? String(salesRows.length) : '';
@@ -749,16 +919,39 @@ function buildToolbar(){
   }
 }
 
+function _monthBtns(active, varName){
+  const MNAMES=['All','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return MNAMES.map((m,i)=>{
+    const val = i===0?'all':String(i);
+    const isA = active===val;
+    const bg  = isA ? '#003366' : '#fff';
+    const col = isA ? '#fff' : '#003366';
+    return '<button onclick="'+varName+'=\''+val+'\';buildToolbar();renderActive()" style="background:'+bg+';color:'+col+';border:2px solid #003366;border-radius:16px;padding:3px 9px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.12s">'+m+'</button>';
+  }).join('');
+}
+function _grpBtns(active, varName){
+  const GRP_COLORS={AMC:'#005599','O&M':'#0891b2','Re-Routing':'#7c3aed',Retrofit:'#d97706',Service:'#16a34a',Trading:'#dc2626'};
+  return ['all','AMC','O&M','Re-Routing','Retrofit','Service','Trading'].map(g=>{
+    const lbl = g==='all'?'All Groups':g;
+    const c   = g==='all'?'#003366':(GRP_COLORS[g]||'#003366');
+    const isA = active===g;
+    return '<button onclick="'+varName+'=\''+g+'\';buildToolbar();renderActive()" style="background:'+(isA?c:'#fff')+';color:'+(isA?'#fff':c)+';border:2px solid '+c+';border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.12s">'+(isA?'✓ ':'')+lbl+'</button>';
+  }).join('');
+}
+
 /* ── RENDER DISPATCHER ── */
 function renderActive(){
   const mc=document.getElementById('mainContent');
-  if(activeSlide==='s-cover')      renderCover(mc);
+  if(activeSlide==='s-dashboard')  renderDashboard(mc);
+  else if(activeSlide==='s-cover')      renderCover(mc);
   else if(activeSlide==='s-guide') renderGuide(mc);
   else if(activeSlide==='s-sales-ov') renderSalesOverview(mc);
   else if(activeSlide==='s-inv-pay') renderInvPay(mc);
   else if(activeSlide==='s-rec')    { allUnfolded=false; renderRec(mc); }
   else if(activeSlide==='s-order')  { ordersUnfolded=false; renderOrder(mc); }
   else if(activeSlide==='s-late')   { renderLate(mc); }
+  else if(activeSlide==='s-inv-plan') { renderInvPlan(mc); }
+  else if(activeSlide==='s-pay-tgt')  { renderPayTarget(mc); }
 }
 
 /* ── SLIDE 1: COVER ── */
@@ -2122,6 +2315,701 @@ buildSlideNav();
 buildGroupSubnav();
 buildToolbar();
 renderActive();
+
+/* ══════════════════════════════════════════
+   HELPER FUNCTIONS (Slides 8, 9, Dashboard)
+══════════════════════════════════════════ */
+const MNAMES_SHORT=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function _ym(d){if(!d)return null;const dt=new Date(d);if(isNaN(dt))return null;return{y:dt.getFullYear(),m:dt.getMonth()+1};}
+function fa2(v){return v===0?'–':'AED '+v.toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fk2(v){if(v>=1000000)return 'AED '+(v/1000000).toFixed(2)+'M';if(v>=1000)return 'AED '+(v/1000).toFixed(1)+'K';return 'AED '+v.toLocaleString('en-AE',{minimumFractionDigits:0,maximumFractionDigits:0});}
+function _fmtK(v){if(v>=1000000)return (v/1000000).toFixed(1)+'M';if(v>=1000)return (v/1000).toFixed(0)+'K';return v.toFixed(0);}
+function _gid(g){return g.replace(/[^a-zA-Z0-9]/g,'_');}
+
+function _compactBarChart(labels, planVals, actVals, planLabel, actLabel){
+  const W=720,H=230,PAD_L=52,PAD_R=14,PAD_T=28,PAD_B=40;
+  const n=labels.length;
+  if(n===0)return '<div style="text-align:center;color:#aaa;padding:30px">No data</div>';
+  const chartW=W-PAD_L-PAD_R,chartH=H-PAD_T-PAD_B;
+  const maxV=Math.max(...planVals,...actVals,1)*1.15;
+  const slotW=chartW/n;
+  const bW=Math.min(slotW*0.34,22);
+  const gap=2;
+  let grid='',yLbls='';
+  [0,0.25,0.5,0.75,1].forEach(t=>{
+    const y=PAD_T+chartH*(1-t);
+    grid+=`<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W-PAD_R}" y2="${y.toFixed(1)}" stroke="${t===0?'#94a3b8':'#e2e8f0'}" stroke-width="${t===0?1.2:0.7}" stroke-dasharray="${t===0?'':'4,3'}"/>`;
+    if(t>0)yLbls+=`<text x="${PAD_L-5}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#94a3b8">${_fmtK(maxV*t)}</text>`;
+  });
+  let bars='',xLabels='',valLbls='';
+  labels.forEach((lbl,i)=>{
+    const cx=PAD_L+slotW*i+slotW/2;
+    const px=cx-bW-gap/2,ax=cx+gap/2;
+    const ph=planVals[i]>0?Math.max(3,planVals[i]/maxV*chartH):0;
+    const ah=actVals[i]>0?Math.max(3,actVals[i]/maxV*chartH):0;
+    const py=PAD_T+chartH-ph,ay=PAD_T+chartH-ah;
+    bars+=`<rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${bW.toFixed(1)}" height="${ph.toFixed(1)}" fill="#1e3a5f" rx="2.5"><title>${planLabel}: AED ${planVals[i].toLocaleString()}</title></rect>`;
+    bars+=`<rect x="${ax.toFixed(1)}" y="${ay.toFixed(1)}" width="${bW.toFixed(1)}" height="${ah.toFixed(1)}" fill="#16a34a" rx="2.5"><title>${actLabel}: AED ${actVals[i].toLocaleString()}</title></rect>`;
+    if(planVals[i]>0)valLbls+=`<text x="${(px+bW/2).toFixed(1)}" y="${(py-3).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="#1e3a5f" font-weight="600">${_fmtK(planVals[i])}</text>`;
+    if(actVals[i]>0)valLbls+=`<text x="${(ax+bW/2).toFixed(1)}" y="${(ay-3).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="#15803d" font-weight="600">${_fmtK(actVals[i])}</text>`;
+    xLabels+=`<text x="${cx.toFixed(1)}" y="${(H-10).toFixed(1)}" text-anchor="middle" font-size="9" fill="#475569">${lbl}</text>`;
+  });
+  const lx=W-PAD_R-148;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block">
+    ${grid}${yLbls}${bars}${valLbls}${xLabels}
+    <rect x="${lx}" y="6" width="10" height="10" fill="#1e3a5f" rx="2"/>
+    <text x="${lx+13}" y="15" font-size="9" fill="#334155" font-weight="600">${planLabel}</text>
+    <rect x="${lx+60}" y="6" width="10" height="10" fill="#16a34a" rx="2"/>
+    <text x="${lx+73}" y="15" font-size="9" fill="#334155" font-weight="600">${actLabel}</text>
+  </svg>`;
+}
+
+/* ══════════════════════════════════════════
+   DASHBOARD TAB
+══════════════════════════════════════════ */
+let _dbCharts = {};
+function _dbChart(id, type, data, options){
+  if(_dbCharts[id]){try{_dbCharts[id].destroy();}catch(e){}}
+  const el=document.getElementById(id);
+  if(!el)return;
+  _dbCharts[id]=new Chart(el.getContext('2d'),{type,data,options});
+}
+
+function renderDashboard(mc){
+  const dbYear  = (document.getElementById('dbYear')  ||{}).value || 'all';
+  const dbMonth = (document.getElementById('dbMonth') ||{}).value || 'all';
+  const dbGroup = (document.getElementById('dbGroup') ||{}).value || 'all';
+
+  const TODAY_D = new Date();
+  const invF = INV_DATA.filter(r=>{
+    if(dbGroup!=='all' && r.g!==dbGroup) return false;
+    const ds=r.iDate||r.invPlanDate;
+    if(dbYear!=='all' && ds && !ds.startsWith(dbYear)) return false;
+    if(dbMonth!=='all' && ds && parseInt(ds.split('-')[1])!==parseInt(dbMonth)) return false;
+    return true;
+  });
+  const salesF = SALES_DATA.filter(r=>{
+    if(dbGroup!=='all' && r.group!==dbGroup) return false;
+    if(dbYear!=='all'){
+      const yr=r.salesYear||(r.startDate&&parseInt(r.startDate.split('-')[0]));
+      if(yr&&yr.toString()!==dbYear) return false;
+    }
+    return true;
+  });
+
+  const totalInv  = invF.reduce((s,r)=>s+r.iAmt,0);
+  const totalColl = invF.reduce((s,r)=>s+r.payRec,0);
+  const totalOut  = invF.reduce((s,r)=>s+r.payDue,0);
+  const od30      = invF.filter(r=>r.daysOD>30&&r.payDue>0).reduce((s,r)=>s+r.payDue,0);
+  const openOrd   = salesF.filter(r=>!['Closed','Cancelled'].includes(r.status)).length;
+  const delayOrd  = salesF.filter(r=>{
+    if(!r.endDate||['Closed','Cancelled'].includes(r.status))return false;
+    const ref=r.actComplDate?new Date(r.actComplDate):TODAY_D;
+    return (ref-new Date(r.endDate))>0;
+  }).length;
+  const planTotal = invF.reduce((s,r)=>s+r.invPlan,0);
+  const invAch    = planTotal>0?Math.round(totalInv/planTotal*100):null;
+  const collRate  = totalInv>0?Math.round(totalColl/totalInv*100):0;
+  const odPct     = totalOut>0?Math.round(od30/totalOut*100):0;
+
+  const year = dbYear!=='all'?dbYear:new Date().getFullYear().toString();
+  const allMons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const invMonthly={}, payMonthly={};
+  allMons.forEach((_,i)=>{
+    const k=`${year}-${String(i+1).padStart(2,'0')}`;
+    invMonthly[k]={plan:0,act:0};
+    payMonthly[k]={tgt:0,act:0};
+  });
+  const grpFilter=dbGroup;
+  INV_DATA.filter(r=>grpFilter==='all'||r.g===grpFilter).forEach(r=>{
+    if(r.invPlanDate&&r.invPlan>0&&r.invPlanDate.startsWith(year)){const k=r.invPlanDate.slice(0,7);if(invMonthly[k])invMonthly[k].plan+=r.invPlan;}
+    if(r.iDate&&r.iAmt>0&&r.iDate.startsWith(year)){const k=r.iDate.slice(0,7);if(invMonthly[k])invMonthly[k].act+=r.iAmt;}
+    if(r.tgtDate&&r.tgtPmt>0&&r.tgtDate.startsWith(year)){const k=r.tgtDate.slice(0,7);if(payMonthly[k])payMonthly[k].tgt+=r.tgtPmt;}
+    if(r.payDate&&r.payRec>0&&r.payDate.startsWith(year)){const k=r.payDate.slice(0,7);if(payMonthly[k])payMonthly[k].act+=r.payRec;}
+  });
+  const invKeys=Object.keys(invMonthly).sort();
+  const invPlans=invKeys.map(k=>invMonthly[k].plan);
+  const invActs=invKeys.map(k=>invMonthly[k].act);
+  const payKeys=Object.keys(payMonthly).sort();
+  const payTgts=payKeys.map(k=>payMonthly[k].tgt);
+  const payActs=payKeys.map(k=>payMonthly[k].act);
+  const maxInv=Math.max(...invPlans,...invActs,1);
+  const maxPay=Math.max(...payTgts,...payActs,1);
+  const ytdInvPlan=invPlans.reduce((s,v)=>s+v,0);
+  const ytdInvAct=invActs.reduce((s,v)=>s+v,0);
+  const ytdPayTgt=payTgts.reduce((s,v)=>s+v,0);
+  const ytdPayAct=payActs.reduce((s,v)=>s+v,0);
+  const ytdInvAch=ytdInvPlan>0?Math.round(ytdInvAct/ytdInvPlan*100):0;
+  const ytdPayAch=ytdPayTgt>0?Math.round(ytdPayAct/ytdPayTgt*100):0;
+
+  const AGING=[{lbl:'Current',cls:'db-ag0',min:0,max:30},{lbl:'31–60d',cls:'db-ag1',min:31,max:60},{lbl:'61–90d',cls:'db-ag2',min:61,max:90},{lbl:'91–120d',cls:'db-ag3',min:91,max:120},{lbl:'>120d',cls:'db-ag4',min:121,max:Infinity}];
+  const odInv=invF.filter(r=>r.payDue>0);
+  const totalOdAmt=odInv.reduce((s,r)=>s+r.payDue,0);
+  const aging=AGING.map(b=>{const rows=odInv.filter(r=>r.daysOD>=b.min&&r.daysOD<=b.max);const amt=rows.reduce((s,r)=>s+r.payDue,0);return{...b,amt,cnt:rows.length,pct:totalOdAmt>0?Math.round(amt/totalOdAmt*100):0};});
+
+  const lpMap={};
+  invF.filter(r=>r.payDue>0&&r.daysOD>0).forEach(r=>{if(!lpMap[r.cl])lpMap[r.cl]={name:r.cl,amt:0,maxDays:0};lpMap[r.cl].amt+=r.payDue;lpMap[r.cl].maxDays=Math.max(lpMap[r.cl].maxDays,r.daysOD);});
+  const lateList=Object.values(lpMap).sort((a,b)=>b.amt-a.amt).slice(0,7);
+  const lpMax=lateList[0]?.amt||1;
+
+  const ordRows=[...salesF].sort((a,b)=>{
+    const da=a.endDate?Math.round(((a.actComplDate?new Date(a.actComplDate):(!['Closed','Cancelled'].includes(a.status)?TODAY_D:new Date(a.endDate)))-new Date(a.endDate))/86400000):0;
+    const db2=b.endDate?Math.round(((b.actComplDate?new Date(b.actComplDate):(!['Closed','Cancelled'].includes(b.status)?TODAY_D:new Date(b.endDate)))-new Date(b.endDate))/86400000):0;
+    return db2-da;
+  });
+
+  const arByGroup={};
+  GROUPS.forEach(g=>{arByGroup[g]=0;});
+  invF.filter(r=>r.payDue>0).forEach(r=>{if(arByGroup[r.g]!==undefined)arByGroup[r.g]+=r.payDue;});
+  const arGroupSorted=Object.entries(arByGroup).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+
+  const allOpen=salesF.filter(r=>!['Closed','Cancelled'].includes(r.status)).length;
+  const inProg=salesF.filter(r=>r.status==='In Progress').length;
+  const pendPay=salesF.filter(r=>['Payment','Pending Payment','Pending payment'].includes(r.status)).length;
+  const closed=salesF.filter(r=>r.status==='Closed').length;
+  const pipeMax=Math.max(allOpen,inProg,pendPay,closed,delayOrd,1);
+
+  function dba(v){if(!v&&v!==0)return '—';if(v>=1000000)return 'AED '+(v/1000000).toFixed(2)+'M';if(v>=1000)return 'AED '+(v/1000).toFixed(1)+'K';return 'AED '+Math.round(v).toLocaleString();}
+  function dbd(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
+
+  mc.innerHTML=`<div class="db-main">
+  <div class="db-kpi-strip">
+    <div class="db-kpi blue"><div class="db-kpi-lbl">Total Invoiced</div><div class="db-kpi-val">${dba(totalInv)}</div><div class="db-kpi-sub"><span class="db-badge-up">${invF.filter(r=>r.iAmt>0).length} inv</span></div></div>
+    <div class="db-kpi green"><div class="db-kpi-lbl">Total Collected</div><div class="db-kpi-val">${dba(totalColl)}</div><div class="db-kpi-sub"><span class="${collRate>=80?'db-badge-up':'db-badge-dn'}">${collRate}%</span> rate</div></div>
+    <div class="db-kpi red"><div class="db-kpi-lbl">Outstanding AR</div><div class="db-kpi-val">${dba(totalOut)}</div><div class="db-kpi-sub">${invF.filter(r=>r.payDue>0).length} open inv.</div></div>
+    <div class="db-kpi amber"><div class="db-kpi-lbl">Overdue &gt;30d</div><div class="db-kpi-val">${dba(od30)}</div><div class="db-kpi-sub"><span class="${odPct>50?'db-badge-dn':'db-badge-up'}">${odPct}%</span> of AR</div></div>
+    <div class="db-kpi purple"><div class="db-kpi-lbl">Open Orders</div><div class="db-kpi-val">${openOrd}</div><div class="db-kpi-sub">${delayOrd>0?'<span class="db-badge-dn">'+delayOrd+' delayed</span>':'<span class="db-badge-up">0 delayed</span>'}</div></div>
+    <div class="db-kpi teal"><div class="db-kpi-lbl">Inv. Achievement</div><div class="db-kpi-val">${invAch!==null?invAch+'%':'—'}</div><div class="db-kpi-sub">${invAch!==null?'<span class="'+(invAch>=80?'db-badge-up':'db-badge-dn')+'">'+(invAch>=100?'On track':'Below plan')+'</span>':'no plan data'}</div></div>
+  </div>
+
+  <div class="db-two-col">
+    <div class="db-sec" id="dbSecAging">
+      <div class="db-sec-hdr" onclick="document.getElementById('dbSecAging').classList.toggle('collapsed')">
+        <div class="db-sec-title">🟥 AR Aging Buckets</div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;color:#94a3b8">Total: ${dba(totalOdAmt)}</span><span class="db-sec-toggle">▾</span></div>
+      </div>
+      <div class="db-sec-body">
+        <div class="db-aging-row">
+          ${aging.map(b=>`<div class="${b.cls}" style="border-radius:7px;padding:9px 10px;border:1px solid;text-align:center;background:inherit"><div class="db-ag-lbl">${b.lbl}</div><div class="db-ag-val">${b.amt>=1000?(b.amt/1000).toFixed(0)+'K':Math.round(b.amt)}</div><div style="font-size:9px;opacity:.7">${b.cnt} inv</div><div class="db-ag-pct">${b.pct}%</div></div>`).join('')}
+        </div>
+        <div style="height:110px;position:relative"><canvas id="dbAgingChart"></canvas></div>
+      </div>
+    </div>
+    <div class="db-sec" id="dbSecPipeline">
+      <div class="db-sec-hdr" onclick="document.getElementById('dbSecPipeline').classList.toggle('collapsed')">
+        <div class="db-sec-title">📋 Order Pipeline</div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;color:#94a3b8">${salesF.length} total</span><span class="db-sec-toggle">▾</span></div>
+      </div>
+      <div class="db-sec-body">
+        ${[['All Open','#3b82f6',allOpen],['In Progress','#8b5cf6',inProg],['Pend. Payment','#f59e0b',pendPay],['Closed','#16a34a',closed],['⚠ Delayed','#dc2626',delayOrd]].map(([lbl,col,cnt])=>`
+          <div class="db-funnel-row">
+            <div class="db-funnel-lbl">${lbl}</div>
+            <div class="db-funnel-bar-wrap"><div class="db-funnel-bar" style="width:${Math.max(cnt/pipeMax*100,cnt?2:0)}%;background:${col}">${cnt>0?cnt+' orders':''}</div></div>
+            <div class="db-funnel-cnt" style="color:${col}">${cnt}</div>
+          </div>`).join('')}
+        ${delayOrd>0?`<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:7px 10px;font-size:10.5px;color:#991b1b;margin-top:8px">⚠️ <strong>${delayOrd} order${delayOrd>1?'s':''}</strong> past end date — see Order Status slide.</div>`:''}
+      </div>
+    </div>
+  </div>
+
+  <div class="db-two-col">
+    <div class="db-sec" id="dbSecInvPlan">
+      <div class="db-sec-hdr" onclick="document.getElementById('dbSecInvPlan').classList.toggle('collapsed')">
+        <div class="db-sec-title">📊 Invoice Plan vs Actual</div>
+        <span class="db-sec-toggle">▾</span>
+      </div>
+      <div class="db-sec-body">
+        <div class="db-pva-legend"><span><div class="db-pva-dot" style="background:#93c5fd"></div>Planned</span><span><div class="db-pva-dot" style="background:#2563eb"></div>Actual</span></div>
+        <div class="db-pva-months">
+          ${invKeys.map((ym,i)=>{const mon=allMons[parseInt(ym.split('-')[1])-1];const p=invPlans[i],a=invActs[i];const ph=p?Math.round((p/maxInv)*65):0;const ah=a?Math.round((a/maxInv)*65):0;const ach=p>0?Math.round(a/p*100):null;return`<div class="db-pva-col"><div class="db-pva-mon">${mon}</div><div class="db-pva-bars"><div class="db-pva-bar" style="height:${ph}px;background:#93c5fd;width:16px" title="${mon} Plan: ${dba(p)}"></div><div class="db-pva-bar" style="height:${ah}px;background:#2563eb;width:16px" title="${mon} Actual: ${dba(a)}"></div></div><div class="db-pva-ach ${ach===null?'na':ach>=100?'over':'under'}">${ach===null?'—':ach+'%'}</div></div>`;}).join('')}
+        </div>
+        <div style="margin-top:8px;border-top:1px solid #f1f5f9;padding-top:7px">
+          <div class="db-prog-row"><div class="db-prog-lbl">YTD Achievement</div><div class="db-prog-wrap"><div class="db-prog-bar"><div class="db-prog-fill" style="width:${Math.min(ytdInvAch,100)}%;background:#2563eb"></div></div><div class="db-prog-pct" style="color:#2563eb">${ytdInvAch}%</div></div></div>
+          <div class="db-prog-row"><div class="db-prog-lbl">YTD Planned</div><div class="db-prog-wrap"><div class="db-prog-bar"><div class="db-prog-fill" style="width:100%;background:#dbeafe"></div></div><div class="db-prog-pct" style="color:#64748b;font-size:9px">${dba(ytdInvPlan)}</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="db-sec" id="dbSecPayPlan">
+      <div class="db-sec-hdr" onclick="document.getElementById('dbSecPayPlan').classList.toggle('collapsed')">
+        <div class="db-sec-title">💰 Payment Target vs Actual</div>
+        <span class="db-sec-toggle">▾</span>
+      </div>
+      <div class="db-sec-body">
+        <div class="db-pva-legend"><span><div class="db-pva-dot" style="background:#86efac"></div>Target</span><span><div class="db-pva-dot" style="background:#16a34a"></div>Collected</span></div>
+        <div class="db-pva-months">
+          ${payKeys.map((ym,i)=>{const mon=allMons[parseInt(ym.split('-')[1])-1];const t=payTgts[i],a=payActs[i];const th=t?Math.round((t/maxPay)*65):0;const ah=a?Math.round((a/maxPay)*65):0;const ach=t>0?Math.round(a/t*100):null;return`<div class="db-pva-col"><div class="db-pva-mon">${mon}</div><div class="db-pva-bars"><div class="db-pva-bar" style="height:${th}px;background:#86efac;width:16px" title="${mon} Target: ${dba(t)}"></div><div class="db-pva-bar" style="height:${ah}px;background:#16a34a;width:16px" title="${mon} Actual: ${dba(a)}"></div></div><div class="db-pva-ach ${ach===null?'na':ach>=100?'over':'under'}">${ach===null?'—':ach+'%'}</div></div>`;}).join('')}
+        </div>
+        <div style="margin-top:8px;border-top:1px solid #f1f5f9;padding-top:7px">
+          <div class="db-prog-row"><div class="db-prog-lbl">YTD Collection</div><div class="db-prog-wrap"><div class="db-prog-bar"><div class="db-prog-fill" style="width:${Math.min(ytdPayAch,100)}%;background:#16a34a"></div></div><div class="db-prog-pct" style="color:#16a34a">${ytdPayAch}%</div></div></div>
+          <div class="db-prog-row"><div class="db-prog-lbl">YTD Target</div><div class="db-prog-wrap"><div class="db-prog-bar"><div class="db-prog-fill" style="width:100%;background:#dcfce7"></div></div><div class="db-prog-pct" style="color:#64748b;font-size:9px">${dba(ytdPayTgt)}</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-sec" id="dbSecOrders">
+    <div class="db-sec-hdr" onclick="document.getElementById('dbSecOrders').classList.toggle('collapsed')">
+      <div class="db-sec-title">📦 Order Status Detail</div>
+      <div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;color:#94a3b8">${ordRows.length} orders</span><span class="db-sec-toggle">▾</span></div>
+    </div>
+    <div class="db-sec-body" style="padding:0;overflow-x:auto">
+      <table class="db-order-table">
+        <thead><tr><th>Project / Client</th><th>Group</th><th class="r">Value</th><th>Status</th><th>End Date</th><th>Actual Compl.</th><th>Delay</th></tr></thead>
+        <tbody>
+          ${ordRows.length===0?`<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">No order data</td></tr>`
+            :ordRows.map(r=>{
+              let dlyHtml='<span class="db-delay-na">—</span>';
+              if(r.endDate){const cmp=r.actComplDate?new Date(r.actComplDate):(!['Closed','Cancelled'].includes(r.status)?TODAY_D:null);if(cmp){const d=Math.round((cmp-new Date(r.endDate))/86400000);dlyHtml=d<=0?'<span class="db-delay-ok">On Time</span>':`<span class="db-delay-late">+${d}d</span>`;}}
+              const sCol=r.status==='Closed'?'#16a34a':r.status==='Cancelled'?'#94a3b8':['Payment','Pending Payment','Pending payment'].includes(r.status)?'#d97706':'#2563eb';
+              const val=r.orderValTax||r.orderVal;
+              return`<tr><td><div style="font-weight:600;font-size:11px">${r.proj||'—'}</div><div style="color:#94a3b8;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px">${r.client}</div></td><td>${r.group}</td><td class="r" style="font-weight:600">${val>0?dba(val):'—'}</td><td><span style="background:${sCol}20;color:${sCol};padding:1px 6px;border-radius:7px;font-size:10px;font-weight:700">${r.status||'—'}</span></td><td style="font-size:10.5px;color:#64748b">${dbd(r.endDate)}</td><td style="font-size:10.5px;color:#64748b">${dbd(r.actComplDate)}</td><td>${dlyHtml}</td></tr>`;
+            }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="db-two-col">
+    <div class="db-sec" id="dbSecLate">
+      <div class="db-sec-hdr" onclick="document.getElementById('dbSecLate').classList.toggle('collapsed')">
+        <div class="db-sec-title">🚨 Top Late Payers</div>
+        <span class="db-sec-toggle">▾</span>
+      </div>
+      <div class="db-sec-body">
+        ${lateList.length===0?'<div style="text-align:center;color:#94a3b8;padding:20px;font-size:12px">No overdue AR in selection</div>'
+          :lateList.map((l,i)=>`<div class="db-late-row"><div class="db-late-rank">${i+1}</div><div style="flex:1;min-width:0"><div class="db-late-name">${l.name}</div><div style="height:4px;background:#fee2e2;border-radius:3px;margin-top:3px;overflow:hidden"><div style="height:100%;background:#dc2626;width:${Math.round(l.amt/lpMax*100)}%;border-radius:3px"></div></div></div><div class="db-late-days">${l.maxDays}d OD</div><div class="db-late-amt">${dba(l.amt)}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="db-sec" id="dbSecARGroup">
+      <div class="db-sec-hdr" onclick="document.getElementById('dbSecARGroup').classList.toggle('collapsed')">
+        <div class="db-sec-title">🗂 AR by Business Group</div>
+        <span class="db-sec-toggle">▾</span>
+      </div>
+      <div class="db-sec-body">
+        <div style="height:180px;position:relative"><canvas id="dbARGroupChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>`;
+
+  setTimeout(()=>{
+    _dbChart('dbAgingChart','bar',{
+      labels:aging.map(b=>b.lbl),
+      datasets:[{label:'AED',data:aging.map(b=>b.amt),backgroundColor:['#86efac','#fde047','#fdba74','#fca5a5','#e879f9'],borderRadius:4,borderWidth:0}]
+    },{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:9},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}},x:{grid:{display:false},ticks:{font:{size:9}}}}});
+    if(arGroupSorted.length>0){
+      _dbChart('dbARGroupChart','bar',{
+        labels:arGroupSorted.map(([k])=>k),
+        datasets:[{label:'AR Outstanding',data:arGroupSorted.map(([,v])=>v),backgroundColor:['#3b82f6','#8b5cf6','#f59e0b','#10b981','#f43f5e','#0ea5e9'],borderRadius:5,borderWidth:0}]
+      },{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:9},callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}},y:{grid:{display:false},ticks:{font:{size:11}}}}});
+    }
+  },50);
+}
+
+/* ── SLIDE 8: Invoice Plan vs Actual ── */
+function renderInvPlan(mc){
+  const yr=ipYear,mo=ipMonth,grp=ipGroup;
+  const MONTHS=[1,2,3,4,5,6,7,8,9,10,11,12];
+  const GRP_COLORS={AMC:'#005599','O&M':'#0891b2','Re-Routing':'#7c3aed',Retrofit:'#d97706',Service:'#16a34a',Trading:'#dc2626'};
+
+  const mData={};
+  MONTHS.forEach(m=>{mData[m]={plan:0,actual:0,planCnt:0,actCnt:0};});
+  const gData={};
+  GROUPS.forEach(g=>{gData[g]={plan:0,actual:0,planCnt:0,actCnt:0,clients:{}};});
+
+  // Till Month mode: when a specific month is selected and cumulative is on, include Jan→mo
+  const ipTillMode = mo!=='all' && ipCumulative;
+  const moNum = mo==='all' ? null : parseInt(mo);
+
+  INV_DATA.forEach(r=>{
+    if(grp!=='all'&&r.g!==grp) return;
+    if(!gData[r.g]) return;
+    if(!gData[r.g].clients[r.cl]) gData[r.g].clients[r.cl]={plan:0,actual:0,planCnt:0,actCnt:0,planDates:[],actDates:[],timing:null,hasAdvance:false};
+    const cd=gData[r.g].clients[r.cl];
+
+    const pym=_ym(r.invPlanDate);
+    if(pym&&(yr==='all'||pym.y===parseInt(yr))){
+      const mOk = mo==='all' || (ipTillMode ? pym.m<=moNum : pym.m===moNum);
+      if(mOk){
+        const v=r.invPlan||0;
+        mData[pym.m].plan+=v;mData[pym.m].planCnt++;
+        gData[r.g].plan+=v;gData[r.g].planCnt++;
+        cd.plan+=v;cd.planCnt++;
+        if(r.invPlanDate)cd.planDates.push(r.invPlanDate.slice(0,7));
+      }
+    }
+    const aym=_ym(r.iDate);
+    if(aym&&(yr==='all'||aym.y===parseInt(yr))){
+      const mOk = mo==='all' || (ipTillMode ? aym.m<=moNum : aym.m===moNum);
+      if(mOk){
+        mData[aym.m].actual+=r.iAmt||0;mData[aym.m].actCnt++;
+        gData[r.g].actual+=r.iAmt||0;gData[r.g].actCnt++;
+        cd.actual+=r.iAmt||0;cd.actCnt++;
+        if(r.iDate)cd.actDates.push(r.iDate.slice(0,7));
+        // Track timing category — advance tracked separately so it's never blocked
+        if((r.iAmt||0)>0){
+          if(_afterPeriod(pym))       cd.hasAdvance=true;
+          if(_beforePeriod(pym))      cd.timing='backlog';
+          else if(_inPeriod(pym))     { if(cd.timing!=='backlog') cd.timing='onschedule'; }
+          else if(!_afterPeriod(pym)) { if(!cd.timing) cd.timing='onschedule'; }
+        }
+      }
+    }
+  });
+
+  let totPlan=0,totAct=0,totPC=0,totAC=0;
+  MONTHS.forEach(m=>{totPlan+=mData[m].plan;totAct+=mData[m].actual;totPC+=mData[m].planCnt;totAC+=mData[m].actCnt;});
+  const variance=totAct-totPlan;
+  const achPct=totPlan>0?(totAct/totPlan*100).toFixed(1):0;
+  const varColor=variance>=0?'#16a34a':'#dc2626';
+  const noPlanDates = INV_DATA.every(r=>!r._hasRealPlanDate);
+
+  // ── Invoice timing breakdown (Backlog / On-Schedule / Advance / Still-Pending) ──
+  function _inPeriod(ym){
+    if(!ym) return false;
+    if(yr==='all') return true;
+    if(ym.y!==parseInt(yr)) return false;
+    if(mo==='all') return true;
+    return ipTillMode ? ym.m<=moNum : ym.m===moNum;
+  }
+  function _beforePeriod(ym){
+    if(!ym||yr==='all') return false;
+    const y=parseInt(yr);
+    if(ym.y<y) return true;
+    if(ym.y===y&&mo!=='all'&&!ipTillMode) return ym.m<moNum;
+    return false;
+  }
+  function _afterPeriod(ym){
+    if(!ym||yr==='all') return false;
+    const y=parseInt(yr);
+    if(ym.y>y) return true;
+    if(ym.y===y&&mo!=='all'&&!ipTillMode) return ym.m>moNum;
+    return false;
+  }
+  let bkAmt=0,bkCnt=0, onAmt=0,onCnt=0, advAmt=0,advCnt=0, pendAmt=0,pendCnt=0;
+  INV_DATA.forEach(r=>{
+    if(grp!=='all'&&r.g!==grp) return;
+    const pym=_ym(r.invPlanDate);
+    const aym=_ym(r.iDate);
+    const raisedNow=_inPeriod(aym);
+    const plannedNow=_inPeriod(pym);
+    const plannedBefore=_beforePeriod(pym);
+    const plannedAfter=_afterPeriod(pym);
+    if(raisedNow&&(r.iAmt||0)>0){
+      if(plannedBefore){bkAmt+=r.iAmt;bkCnt++;}
+      else if(plannedNow){onAmt+=r.iAmt;onCnt++;}
+      else if(plannedAfter){advAmt+=r.iAmt;advCnt++;}
+      else{onAmt+=r.iAmt;onCnt++;} // raised in period, no plan date → count as on-schedule
+    }
+    // Pending: planned for a prior period, not raised at all
+    if(plannedBefore&&(r.invPlan||0)>0&&!aym){
+      pendAmt+=r.invPlan;pendCnt++;
+    }
+  });
+
+  let chartHTML='';
+  if(ipChartVisible){
+    if(mo==='all'||ipTillMode){
+      const am=MONTHS.filter(m=>mData[m].plan>0||mData[m].actual>0);
+      chartHTML=_compactBarChart(am.map(m=>MNAMES_SHORT[m]),am.map(m=>mData[m].plan),am.map(m=>mData[m].actual),'Planned','Actual');
+    } else {
+      const ag=GROUPS.filter(g=>gData[g].plan>0||gData[g].actual>0);
+      chartHTML=_compactBarChart(ag.map(g=>g.length>6?g.slice(0,6)+'…':g),ag.map(g=>gData[g].plan),ag.map(g=>gData[g].actual),'Planned','Actual');
+    }
+  }
+
+  let tableRows='';
+  GROUPS.forEach(g=>{
+    const d=gData[g];
+    if(d.plan===0&&d.actual===0)return;
+    const v=d.actual-d.plan,p=d.plan>0?(d.actual/d.plan*100).toFixed(1):0;
+    const gc=GRP_COLORS[g]||'#003366',gid=_gid(g);
+    const nClients=Object.keys(d.clients).length;
+    tableRows+=`<tr class="chdr" onclick="toggleIPGroup('${gid}')" style="cursor:pointer">
+      <td style="padding-left:10px"><span id="ip-icon-${gid}" style="font-size:10px;margin-right:6px;color:${gc}">▶</span><span style="background:${gc}22;color:${gc};border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">${g}</span><span style="font-size:10px;color:#94a3b8;margin-left:6px">${nClients} client${nClients!==1?'s':''}</span></td>
+      <td style="text-align:center">${d.planCnt}</td>
+      <td class="amt">${fa2(d.plan)}</td>
+      <td style="text-align:center">${d.actCnt}</td>
+      <td class="amt">${fa2(d.actual)}</td>
+      <td class="amt" style="color:${v>=0?'#16a34a':'#dc2626'}">${v>=0?'+':''}${fa2(v)}</td>
+      <td style="text-align:center;font-weight:700;color:${parseFloat(p)>=100?'#16a34a':parseFloat(p)>=80?'#d97706':'#dc2626'}">${p}%</td>
+    </tr>`;
+    Object.keys(d.clients).sort().forEach(cl=>{
+      const c=d.clients[cl];
+      if(c.plan===0&&c.actual===0)return;
+      const cv=c.actual-c.plan,cp=c.plan>0?(c.actual/c.plan*100).toFixed(1):0;
+      const planMo=[...new Set(c.planDates)].slice(0,2).join(', ')||'–';
+      const actMo=[...new Set(c.actDates)].slice(0,2).join(', ')||'–';
+      const timingBadge = (c.timing==='backlog'
+        ? '<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:5px" title="Raised this period but planned for a prior period">⏮ Backlog</span>'
+        : c.timing==='onschedule'
+        ? '<span style="background:#dcfce7;color:#166534;border-radius:6px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:5px">✅ On Plan</span>'
+        : '')
+        + (c.hasAdvance
+        ? '<span style="background:#e0f2fe;color:#075985;border-radius:6px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:4px" title="At least one invoice raised this period has a plan date in a future period — check Invoice Plan Date (col L)">⚡ Advance</span>'
+        : '');
+      tableRows+=`<tr class="drow ip-cl-${gid}" style="display:none">
+        <td style="padding-left:30px;color:#374151;font-size:11px">↳ ${cl}${timingBadge}</td>
+        <td style="text-align:center;font-size:10px;color:#6b7280">${planMo}</td>
+        <td class="amt" style="font-size:11px">${fa2(c.plan)}</td>
+        <td style="text-align:center;font-size:10px;color:#6b7280">${actMo}</td>
+        <td class="amt" style="font-size:11px">${fa2(c.actual)}</td>
+        <td class="amt" style="font-size:11px;color:${cv>=0?'#16a34a':'#dc2626'}">${cv>=0?'+':''}${fa2(cv)}</td>
+        <td style="text-align:center;font-size:11px;font-weight:700;color:${parseFloat(cp)>=100?'#16a34a':parseFloat(cp)>=80?'#d97706':'#dc2626'}">${cp}%</td>
+      </tr>`;
+    });
+  });
+
+  const moLabel = mo==='all'?'All Months':(ipTillMode?'Jan–'+MNAMES_SHORT[moNum]:MNAMES_SHORT[moNum]);
+  const periodLabel=(yr==='all'?'All Years':yr)+' | '+moLabel+(grp==='all'?'':' | '+grp);
+  const planDateWarning = noPlanDates ? `
+    <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">⚠️</span>
+      <div>
+        <div style="font-weight:700;color:#92400e;font-size:12px">Invoice Plan Dates Not Available</div>
+        <div style="color:#78350f;font-size:11px;margin-top:2px">No "Invoice Plan Date" column found in your sheet — add it to column L to see accurate Plan vs Actual timing.</div>
+      </div>
+    </div>` : '';
+
+  mc.innerHTML=`
+  <div>
+    ${planDateWarning}
+    <div class="kpi-grid">
+      <div class="kpi kb"><div class="kpi-lbl">Invoice Planned</div><div class="kpi-val">${fk2(totPlan)}</div><div class="kpi-sub">${totPC} invoices planned</div></div>
+      <div class="kpi kg"><div class="kpi-lbl">Invoice Actual</div><div class="kpi-val">${fk2(totAct)}</div><div class="kpi-sub">${totAC} invoices raised</div></div>
+      <div class="kpi ${variance>=0?'kg':'kr'}"><div class="kpi-lbl">Variance</div><div class="kpi-val" style="color:${varColor}">${variance>=0?'+':''}${fk2(Math.abs(variance))}</div><div class="kpi-sub">${variance>=0?'Above plan':'Below plan'}</div></div>
+      <div class="kpi ${parseFloat(achPct)>=100?'kg':parseFloat(achPct)>=80?'ka':'kr'}"><div class="kpi-lbl">Achievement</div><div class="kpi-val">${achPct}%</div><div class="kpi-sub">vs Invoice Plan</div></div>
+    </div>
+    <!-- Invoice timing breakdown -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:#fff;border-radius:10px;padding:11px 14px;border:1px solid #e2e8f0;border-left:4px solid #d97706;position:relative" title="Invoices raised this period that were planned for a PREVIOUS period (catching up on backlog)">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#d97706;margin-bottom:3px">⏮ From Backlog</div>
+        <div style="font-size:17px;font-weight:700;color:#92400e">${fk2(bkAmt)}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">${bkCnt} inv raised from prior plan</div>
+        ${bkCnt>0&&totAct>0?`<div style="font-size:9px;font-weight:700;color:#d97706;margin-top:4px">${Math.round(bkAmt/totAct*100)}% of actual</div>`:''}
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:11px 14px;border:1px solid #e2e8f0;border-left:4px solid #16a34a;position:relative" title="Invoices raised in the same period they were planned — on schedule">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#16a34a;margin-bottom:3px">✅ On Schedule</div>
+        <div style="font-size:17px;font-weight:700;color:#166534">${fk2(onAmt)}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">${onCnt} inv raised on plan</div>
+        ${onCnt>0&&totAct>0?`<div style="font-size:9px;font-weight:700;color:#16a34a;margin-top:4px">${Math.round(onAmt/totAct*100)}% of actual</div>`:''}
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:11px 14px;border:1px solid #e2e8f0;border-left:4px solid #0891b2;position:relative" title="Invoices raised ahead of their plan date — proactive invoicing for future periods">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0891b2;margin-bottom:3px">⚡ In Advance</div>
+        <div style="font-size:17px;font-weight:700;color:#075985">${fk2(advAmt)}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">${advCnt} inv raised ahead of plan</div>
+        ${advCnt>0&&totAct>0?`<div style="font-size:9px;font-weight:700;color:#0891b2;margin-top:4px">${Math.round(advAmt/totAct*100)}% of actual</div>`:''}
+        ${advCnt>0?`<div style="font-size:9px;color:#64748b;margin-top:3px;line-height:1.4">iDate &lt; invPlanDate — expand group to see ⚡ badge</div>`:''}
+      </div>
+      <div style="background:#fff;border-radius:10px;padding:11px 14px;border:1px solid #e2e8f0;border-left:4px solid #dc2626;position:relative" title="Planned invoices from prior periods that have NOT been raised yet — true outstanding backlog">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#dc2626;margin-bottom:3px">🕐 Still Pending</div>
+        <div style="font-size:17px;font-weight:700;color:#991b1b">${fk2(pendAmt)}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">${pendCnt} plan inv not yet raised</div>
+        ${pendCnt>0?`<div style="font-size:9px;font-weight:700;color:#dc2626;margin-top:4px">overdue from prior periods</div>`:'<div style="font-size:9px;font-weight:700;color:#16a34a;margin-top:4px">All clear ✓</div>'}
+      </div>
+    </div>
+    ${ipChartVisible?`<div class="tcard" style="margin-bottom:12px">
+      <div class="tcard-hdr"><span class="tcard-title">📊 Invoice Plan vs Actual — ${periodLabel}</span><span style="font-size:10px;color:#94a3b8">■ <span style="color:#003366">Planned</span> &nbsp;■ <span style="color:#16a34a">Actual</span></span></div>
+      <div style="padding:10px 14px">${chartHTML}</div>
+    </div>`:''}
+    <div class="tcard">
+      <div class="tcard-hdr">
+        <span class="tcard-title">Group Breakdown</span>
+        <span class="pill">Plan Date → Planned &nbsp;|&nbsp; Invoice Date → Actual</span>
+        <button onclick="toggleAllIPGroups()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;color:#374151" id="ip-unfold-btn">▶ Unfold All</button>
+      </div>
+      <div class="twrap"><table>
+        <thead><tr>
+          <th style="text-align:left;padding-left:14px">Group / Client</th>
+          <th class="tc">Plan Period</th><th>Planned Amount</th>
+          <th class="tc">Actual Period</th><th>Actual Amount</th>
+          <th>Variance</th><th class="tc">Achievement %</th>
+        </tr></thead>
+        <tbody>${tableRows||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">No data for selected filters</td></tr>'}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+function toggleIPGroup(gid){
+  const rows=document.querySelectorAll('.ip-cl-'+gid);
+  const open=rows.length>0&&rows[0].style.display!=='none';
+  rows.forEach(r=>r.style.display=open?'none':'');
+  const ic=document.getElementById('ip-icon-'+gid);
+  if(ic)ic.textContent=open?'▶':'▼';
+}
+let _ipAllOpen=false;
+function toggleAllIPGroups(){
+  _ipAllOpen=!_ipAllOpen;
+  GROUPS.forEach(g=>{
+    const gid=_gid(g);
+    document.querySelectorAll('.ip-cl-'+gid).forEach(r=>r.style.display=_ipAllOpen?'':'none');
+    const ic=document.getElementById('ip-icon-'+gid);
+    if(ic)ic.textContent=_ipAllOpen?'▼':'▶';
+  });
+  const btn=document.getElementById('ip-unfold-btn');
+  if(btn)btn.textContent=_ipAllOpen?'▼ Fold All':'▶ Unfold All';
+}
+
+/* ── SLIDE 9: Payment Target vs Actual ── */
+function renderPayTarget(mc){
+  const yr=ptYear,mo=ptMonth,grp=ptGroup;
+  const MONTHS=[1,2,3,4,5,6,7,8,9,10,11,12];
+  const GRP_COLORS={AMC:'#005599','O&M':'#0891b2','Re-Routing':'#7c3aed',Retrofit:'#d97706',Service:'#16a34a',Trading:'#dc2626'};
+
+  const mData={};
+  MONTHS.forEach(m=>{mData[m]={tgt:0,act:0,tgtCnt:0,actCnt:0};});
+  const gData={};
+  GROUPS.forEach(g=>{gData[g]={tgt:0,act:0,tgtCnt:0,actCnt:0,clients:{}};});
+
+  // Till Month mode: cumulative Jan→selected month
+  const ptTillMode = mo!=='all' && ptCumulative;
+  const ptMoNum = mo==='all' ? null : parseInt(mo);
+
+  INV_DATA.forEach(r=>{
+    if(grp!=='all'&&r.g!==grp) return;
+    if(!gData[r.g]) return;
+    if(!gData[r.g].clients[r.cl]) gData[r.g].clients[r.cl]={tgt:0,act:0,tgtCnt:0,actCnt:0,dueDates:[],payDates:[],earlyPay:false};
+    const cd=gData[r.g].clients[r.cl];
+
+    const tym=_ym(r.payDueDate);
+
+    // TARGET: grouped by due date month
+    if(tym&&(yr==='all'||tym.y===parseInt(yr))){
+      const mOk = mo==='all' || (ptTillMode ? tym.m<=ptMoNum : tym.m===ptMoNum);
+      if(mOk){
+        mData[tym.m].tgt+=r.iAmt||0;mData[tym.m].tgtCnt++;
+        gData[r.g].tgt+=r.iAmt||0;gData[r.g].tgtCnt++;
+        cd.tgt+=r.iAmt||0;cd.tgtCnt++;
+        if(r.payDueDate)cd.dueDates.push(r.payDueDate.slice(0,7));
+      }
+    }
+
+    // COLLECTED: group by due date (not payment date) so advance payments
+    // still count in the correct period. E.g. due Jan-26 but paid Dec-25
+    // → still shows as collected in Jan-26, not lost when filtering 2026.
+    const refYm = tym || _ym(r.payDate); // fall back to payment date if no due date
+    if(r.payRec>0 && refYm && (yr==='all'||refYm.y===parseInt(yr))){
+      const mOk = mo==='all' || (ptTillMode ? refYm.m<=ptMoNum : refYm.m===ptMoNum);
+      if(mOk){
+        mData[refYm.m].act+=r.payRec||0;mData[refYm.m].actCnt++;
+        gData[r.g].act+=r.payRec||0;gData[r.g].actCnt++;
+        cd.act+=r.payRec||0;cd.actCnt++;
+        if(r.payDate){
+          cd.payDates.push(r.payDate.slice(0,7));
+          // Flag advance payment: paid before due date
+          if(r.payDueDate && r.payDate < r.payDueDate) cd.earlyPay=true;
+        }
+      }
+    }
+  });
+
+  let totTgt=0,totAct=0,totTC=0,totAC=0;
+  MONTHS.forEach(m=>{totTgt+=mData[m].tgt;totAct+=mData[m].act;totTC+=mData[m].tgtCnt;totAC+=mData[m].actCnt;});
+  const variance=totAct-totTgt;
+  const collPct=totTgt>0?(totAct/totTgt*100).toFixed(1):0;
+  const varColor=variance>=0?'#16a34a':'#dc2626';
+
+  let chartHTML='';
+  if(ptChartVisible){
+    if(mo==='all'||ptTillMode){
+      const am=MONTHS.filter(m=>mData[m].tgt>0||mData[m].act>0);
+      chartHTML=_compactBarChart(am.map(m=>MNAMES_SHORT[m]),am.map(m=>mData[m].tgt),am.map(m=>mData[m].act),'Target','Collected');
+    } else {
+      const ag=GROUPS.filter(g=>gData[g].tgt>0||gData[g].act>0);
+      chartHTML=_compactBarChart(ag.map(g=>g.length>6?g.slice(0,6)+'…':g),ag.map(g=>gData[g].tgt),ag.map(g=>gData[g].act),'Target','Collected');
+    }
+  }
+
+  let tableRows='';
+  GROUPS.forEach(g=>{
+    const d=gData[g];
+    if(d.tgt===0&&d.act===0)return;
+    const v=d.act-d.tgt,p=d.tgt>0?(d.act/d.tgt*100).toFixed(1):0;
+    const gc=GRP_COLORS[g]||'#003366',gid=_gid(g);
+    const nClients=Object.keys(d.clients).length;
+    const earlyCount=Object.values(d.clients).filter(c=>c.earlyPay).length;
+    tableRows+=`<tr class="chdr" onclick="togglePTGroup('${gid}')" style="cursor:pointer">
+      <td style="padding-left:10px"><span id="pt-icon-${gid}" style="font-size:10px;margin-right:6px;color:${gc}">▶</span><span style="background:${gc}22;color:${gc};border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700">${g}</span><span style="font-size:10px;color:#94a3b8;margin-left:6px">${nClients} client${nClients!==1?'s':''}</span>${earlyCount>0?`<span style="background:#fef9c3;color:#854d0e;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:6px" title="${earlyCount} client(s) paid before due date">⚡ ${earlyCount} early</span>`:''}</td>
+      <td style="text-align:center">${d.tgtCnt}</td>
+      <td class="amt">${fa2(d.tgt)}</td>
+      <td style="text-align:center">${d.actCnt}</td>
+      <td class="amt">${fa2(d.act)}</td>
+      <td class="amt" style="color:${v>=0?'#16a34a':'#dc2626'}">${v>=0?'+':''}${fa2(v)}</td>
+      <td style="text-align:center;font-weight:700;color:${parseFloat(p)>=100?'#16a34a':parseFloat(p)>=80?'#d97706':'#dc2626'}">${p}%</td>
+    </tr>`;
+    Object.keys(d.clients).sort().forEach(cl=>{
+      const c=d.clients[cl];
+      if(c.tgt===0&&c.act===0)return;
+      const cv=c.act-c.tgt,cp=c.tgt>0?(c.act/c.tgt*100).toFixed(1):0;
+      const dueMo=[...new Set(c.dueDates)].slice(0,2).join(', ')||'–';
+      const payMo=[...new Set(c.payDates)].slice(0,2).join(', ')||'–';
+      const earlyTag=c.earlyPay?'<span style="background:#fef9c3;color:#854d0e;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:4px" title="Payment received before due date">⚡ Early</span>':'';
+      const paidTag=c.act>=c.tgt?'<span style="background:#dcfce7;color:#166534;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:4px">✓ Paid</span>':'<span style="background:#fee2e2;color:#991b1b;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:4px">Pending</span>';
+      tableRows+=`<tr class="drow pt-cl-${gid}" style="display:none">
+        <td style="padding-left:30px;color:#374151;font-size:11px">↳ ${cl}${paidTag}${earlyTag}</td>
+        <td style="text-align:center;font-size:10px;color:#6b7280">${dueMo}</td>
+        <td class="amt" style="font-size:11px">${fa2(c.tgt)}</td>
+        <td style="text-align:center;font-size:10px;color:#6b7280">${payMo}</td>
+        <td class="amt" style="font-size:11px">${fa2(c.act)}</td>
+        <td class="amt" style="font-size:11px;color:${cv>=0?'#16a34a':'#dc2626'}">${cv>=0?'+':''}${fa2(cv)}</td>
+        <td style="text-align:center;font-size:11px;font-weight:700;color:${parseFloat(cp)>=100?'#16a34a':parseFloat(cp)>=80?'#d97706':'#dc2626'}">${cp}%</td>
+      </tr>`;
+    });
+  });
+
+  const ptMoLabel = mo==='all'?'All Months':(ptTillMode?'Jan–'+MNAMES_SHORT[ptMoNum]:MNAMES_SHORT[ptMoNum]);
+  const periodLabel=(yr==='all'?'All Years':yr)+' | '+ptMoLabel+(grp==='all'?'':' | '+grp);
+
+  mc.innerHTML=`
+  <div>
+    <div class="kpi-grid">
+      <div class="kpi kb"><div class="kpi-lbl">Payment Target</div><div class="kpi-val">${fk2(totTgt)}</div><div class="kpi-sub">${totTC} invoices due</div></div>
+      <div class="kpi kg"><div class="kpi-lbl">Collected</div><div class="kpi-val">${fk2(totAct)}</div><div class="kpi-sub">${totAC} payments received</div></div>
+      <div class="kpi ${variance>=0?'kg':'kr'}"><div class="kpi-lbl">Variance</div><div class="kpi-val" style="color:${varColor}">${variance>=0?'+':''}${fk2(Math.abs(variance))}</div><div class="kpi-sub">${variance>=0?'Over target':'Under target'}</div></div>
+      <div class="kpi ${parseFloat(collPct)>=100?'kg':parseFloat(collPct)>=80?'ka':'kr'}"><div class="kpi-lbl">Collection %</div><div class="kpi-val">${collPct}%</div><div class="kpi-sub">vs Payment Target</div></div>
+    </div>
+    ${ptChartVisible?`<div class="tcard" style="margin-bottom:12px">
+      <div class="tcard-hdr"><span class="tcard-title">💰 Payment Target vs Collected — ${periodLabel}</span><span style="font-size:10px;color:#94a3b8">■ <span style="color:#003366">Target</span> &nbsp;■ <span style="color:#16a34a">Collected</span></span></div>
+      <div style="padding:10px 14px">${chartHTML}</div>
+    </div>`:''}
+    <div class="tcard">
+      <div class="tcard-hdr">
+        <span class="tcard-title">Group Breakdown</span>
+        <span class="pill">Target = Invoice Amount due &nbsp;|&nbsp; Collected = Payment Received &nbsp;|&nbsp; <span style="color:#854d0e">⚡ Early = paid before due date</span></span>
+        <button onclick="toggleAllPTGroups()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:600;cursor:pointer;color:#374151" id="pt-unfold-btn">▶ Unfold All</button>
+      </div>
+      <div class="twrap"><table>
+        <thead><tr>
+          <th style="text-align:left;padding-left:14px">Group / Client</th>
+          <th class="tc">Due Period</th><th>Target Amount</th>
+          <th class="tc">Pay Period</th><th>Collected</th>
+          <th>Variance</th><th class="tc">Collection %</th>
+        </tr></thead>
+        <tbody>${tableRows||'<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px">No data for selected filters</td></tr>'}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+function togglePTGroup(gid){
+  const rows=document.querySelectorAll('.pt-cl-'+gid);
+  const open=rows.length>0&&rows[0].style.display!=='none';
+  rows.forEach(r=>r.style.display=open?'none':'');
+  const ic=document.getElementById('pt-icon-'+gid);
+  if(ic)ic.textContent=open?'▶':'▼';
+}
+let _ptAllOpen=false;
+function toggleAllPTGroups(){
+  _ptAllOpen=!_ptAllOpen;
+  GROUPS.forEach(g=>{
+    const gid=_gid(g);
+    document.querySelectorAll('.pt-cl-'+gid).forEach(r=>r.style.display=_ptAllOpen?'':'none');
+    const ic=document.getElementById('pt-icon-'+gid);
+    if(ic)ic.textContent=_ptAllOpen?'▼':'▶';
+  });
+  const btn=document.getElementById('pt-unfold-btn');
+  if(btn)btn.textContent=_ptAllOpen?'▼ Fold All':'▶ Unfold All';
+}
 
 // Fetch live data from Google Sheets
 fetchLiveData();
