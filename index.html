@@ -1459,7 +1459,8 @@ function renderInvPay(mc){
     const balance=invRaised-payColl;
     const dueRows=gd.filter(r=>r.payDueDate&&r.payDue>0&&new Date(r.payDueDate)<TODAY);
     const payDue=dueRows.reduce((s,r)=>s+r.payDue,0);
-    agg[g]={invRaised,payColl,balance,payDue};
+    const notDue=Math.max(0,balance-payDue);
+    agg[g]={invRaised,payColl,balance,payDue,notDue};
 
     // Build per-client aggregation
     const cmap={};
@@ -1474,11 +1475,11 @@ function renderInvPay(mc){
       if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0};
       cmap[r.cl].payDue+=r.payDue||0;
     });
-    Object.values(cmap).forEach(c=>c.balance=c.invRaised-c.payColl);
+    Object.values(cmap).forEach(c=>{c.balance=c.invRaised-c.payColl;c.notDue=Math.max(0,c.balance-c.payDue);});
     clientMap[g]=Object.entries(cmap).sort((a,b)=>b[1].invRaised-a[1].invRaised);
   });
 
-  const tot={invRaised:0,payColl:0,balance:0,payDue:0};
+  const tot={invRaised:0,payColl:0,balance:0,payDue:0,notDue:0};
   Object.values(agg).forEach(a=>Object.keys(tot).forEach(k=>tot[k]+=a[k]));
 
   const collRate=tot.invRaised>0?((tot.payColl/tot.invRaised)*100).toFixed(1):'0.0';
@@ -1499,6 +1500,7 @@ function renderInvPay(mc){
       <td><div class="prog-wrap">${fa(a.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${cp.toFixed(0)}%;background:#16a34a"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${cp.toFixed(0)}%</span></div></td>
       <td style="color:${a.balance<0?'#b91c1c':a.balance>0?'#1d4ed8':'#374151'};font-weight:600">${fa(a.balance)}</td>
       <td style="color:${a.payDue>0?'#b91c1c':'#374151'};font-weight:${a.payDue>0?'700':'400'}">${fa(a.payDue)}</td>
+      <td style="color:${a.notDue>0?'#0369a1':'#374151'}">${a.notDue>0?fa(a.notDue):'–'}</td>
     </tr>`;
     clients.forEach(([cl,c])=>{
       const ccp=c.invRaised>0?Math.min(100,(c.payColl/c.invRaised)*100):0;
@@ -1508,6 +1510,7 @@ function renderInvPay(mc){
         <td><div class="prog-wrap" style="font-size:11px">${fa(c.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${ccp.toFixed(0)}%;background:#16a34a"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${ccp.toFixed(0)}%</span></div></td>
         <td style="font-size:11px;color:${c.balance<0?'#b91c1c':c.balance>0?'#1d4ed8':'#374151'}">${fa(c.balance)}</td>
         <td style="font-size:11px;color:${c.payDue>0?'#b91c1c':'#6b7280'}">${c.payDue>0?fa(c.payDue):'–'}</td>
+        <td style="font-size:11px;color:${c.notDue>0?'#0369a1':'#6b7280'}">${c.notDue>0?fa(c.notDue):'–'}</td>
       </tr>`;
     });
   });
@@ -1518,14 +1521,15 @@ function renderInvPay(mc){
     <td><div class="prog-wrap">${fa(tot.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${tp.toFixed(0)}%;background:#005599"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${tp.toFixed(0)}%</span></div></td>
     <td>${fa(tot.balance)}</td>
     <td style="color:${tot.payDue>0?'#dc2626':'inherit'}">${fa(tot.payDue)}</td>
+    <td style="color:${tot.notDue>0?'#0369a1':'inherit'}">${tot.notDue>0?fa(tot.notDue):'–'}</td>
   </tr>`;
 
   mc.innerHTML=`
     <div class="kpi-grid">
       <div class="kpi kb"><div class="kpi-lbl">Total Invoice Raised</div><div class="kpi-val">${fk(tot.invRaised)}</div><div class="kpi-sub">Incl. Tax</div></div>
-      <div class="kpi kg"><div class="kpi-lbl">Payment Collected</div><div class="kpi-val">${fk(tot.payColl)}</div><div class="kpi-sub">Collection rate: ${collRate}%</div></div>
-      <div class="kpi ka"><div class="kpi-lbl">Balance to Collect</div><div class="kpi-val">${fk(tot.balance)}</div><div class="kpi-sub">Outstanding balance</div></div>
-      <div class="kpi kr"><div class="kpi-lbl">Payment Overdue</div><div class="kpi-val">${fk(tot.payDue)}</div><div class="kpi-sub">Past credit terms</div></div>
+      <div class="kpi kg"><div class="kpi-lbl">Payment Collected</div><div class="kpi-val">${fk(tot.payColl)}</div><div class="kpi-sub"><b style="color:#16a34a">${collRate}% of invoiced</b></div></div>
+      <div class="kpi ka"><div class="kpi-lbl">Balance to Collect</div><div class="kpi-val">${fk(tot.balance)}</div><div class="kpi-sub">Outstanding balance${tot.invRaised>0?` · <b style="color:#d97706">${((tot.balance/tot.invRaised)*100).toFixed(1)}% of invoiced</b>`:''}</div></div>
+      <div class="kpi kr"><div class="kpi-lbl">Payment Overdue</div><div class="kpi-val">${fk(tot.payDue)}</div><div class="kpi-sub">Past credit terms${tot.balance>0?` · <b style="color:#dc2626">${((tot.payDue/tot.balance)*100).toFixed(1)}% of balance</b>`:''}</div></div>
     </div>
     <div class="tcard">
       <div class="tcard-hdr">
@@ -1542,6 +1546,7 @@ function renderInvPay(mc){
             <th>Payment Collected</th>
             <th>Balance to Collect</th>
             <th>Payment Due</th>
+            <th>Payment Not Due</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1599,6 +1604,15 @@ function renderRec(mc){
   const tot120=allGrp.filter(r=>r.daysOverdue>120).reduce((s,r)=>s+r.payDue,0);
   const cCount=new Set(allGrp.map(r=>r.client)).size;
 
+  // Aging buckets respect STATUS + GRADE filters but not the AGING filter itself
+  const agingBase=REC_DATA.filter(r=>{
+    if(activeGroup!=='ALL'&&r.group!==activeGroup) return false;
+    if(fStatus!=='all'&&r.status!==fStatus) return false;
+    const g=grade(r.client);
+    if(fGrade!=='all'&&g!==fGrade) return false;
+    return true;
+  });
+
   const ABUCKETS=[
     {k:'lt30', lbl:'< 30 Days', cls:'ag0', fn:d=>d>0&&d<30},
     {k:'gt30', lbl:'> 30 Days', cls:'ag1', fn:d=>d>30&&d<=60},
@@ -1607,7 +1621,7 @@ function renderRec(mc){
     {k:'gt120',lbl:'> 120 Days',cls:'ag4', fn:d=>d>120},
   ];
   const agingHtml=ABUCKETS.map(b=>{
-    const rows=allGrp.filter(r=>b.fn(r.daysOverdue));
+    const rows=agingBase.filter(r=>b.fn(r.daysOverdue));
     const amt=rows.reduce((s,r)=>s+r.payDue,0);
     return `<div class="ag ${b.cls}">
       <div class="ag-lbl">${b.lbl}</div>
@@ -1704,11 +1718,11 @@ function renderRec(mc){
   </tr>`;
   mc.innerHTML=`
     <div class="kpi-grid">
-      <div class="kpi kb"><div class="kpi-lbl">Total Invoiced</div><div class="kpi-val">${fk(totInv)}</div><div class="kpi-sub">${activeGroup} group</div></div>
-      <div class="kpi kr"><div class="kpi-lbl">Total Outstanding</div><div class="kpi-val">${fk(totOut)}</div><div class="kpi-sub">Pending collection</div></div>
-      <div class="kpi ka"><div class="kpi-lbl">Overdue Amount</div><div class="kpi-val">${fk(totOD)}</div><div class="kpi-sub">Past credit terms</div></div>
-      <div class="kpi kg"><div class="kpi-lbl">Not Yet Due</div><div class="kpi-val">${fk(totND)}</div><div class="kpi-sub">Within credit period</div></div>
-      <div class="kpi kp"><div class="kpi-lbl">&gt; 120 Days</div><div class="kpi-val">${fk(tot120)}</div><div class="kpi-sub">Critical escalation</div></div>
+      <div class="kpi kb"><div class="kpi-lbl">Total Invoiced</div><div class="kpi-val">${fk(totInv)}</div><div class="kpi-sub">${activeGroup} group${totInv>0?` · <b style="color:#16a34a">${(((totInv-totOut)/totInv)*100).toFixed(1)}% collected</b>`:''}</div></div>
+      <div class="kpi kr"><div class="kpi-lbl">Total Outstanding</div><div class="kpi-val">${fk(totOut)}</div><div class="kpi-sub">Pending collection${totInv>0?` · <b style="color:#dc2626">${((totOut/totInv)*100).toFixed(1)}% of invoiced</b>`:''}</div></div>
+      <div class="kpi ka"><div class="kpi-lbl">Overdue Amount</div><div class="kpi-val">${fk(totOD)}</div><div class="kpi-sub">${totOut>0?`<b style="color:#d97706">${((totOD/totOut)*100).toFixed(1)}% of outstanding</b>`:'Past credit terms'}${totInv>0?` · <b style="color:#dc2626">${((totOD/totInv)*100).toFixed(1)}% of invoiced</b>`:''}</div></div>
+      <div class="kpi kg"><div class="kpi-lbl">Not Yet Due</div><div class="kpi-val">${fk(totND)}</div><div class="kpi-sub">${totOut>0?`<b style="color:#0891b2">${((totND/totOut)*100).toFixed(1)}% of outstanding</b>`:'Within credit period'}${totInv>0?` · <b style="color:#16a34a">${((totND/totInv)*100).toFixed(1)}% of invoiced</b>`:''}</div></div>
+      <div class="kpi kp"><div class="kpi-lbl">&gt; 120 Days</div><div class="kpi-val">${fk(tot120)}</div><div class="kpi-sub">Critical escalation${totOD>0?` · <b style="color:#7c3aed">${((tot120/totOD)*100).toFixed(1)}% of overdue</b>`:''}</div></div>
       <div class="kpi kd"><div class="kpi-lbl">Active Clients</div><div class="kpi-val">${cCount}</div><div class="kpi-sub">With open balance</div></div>
     </div>
     <div class="aging-row">${agingHtml}</div>
