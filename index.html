@@ -1457,7 +1457,7 @@ function renderInvPay(mc){
     const invRaised=invRows.reduce((s,r)=>s+r.iAmt,0);
     const payColl=invRows.reduce((s,r)=>s+r.payRec,0);
     const balance=invRaised-payColl;
-    const dueRows=gd.filter(r=>r.payDueDate&&r.payDue>0&&new Date(r.payDueDate)<TODAY);
+    const dueRows=gd.filter(r=>r.status==='Overdue'&&r.payDue>0);
     const payDue=dueRows.reduce((s,r)=>s+r.payDue,0);
     const notDue=Math.max(0,balance-payDue);
     agg[g]={invRaised,payColl,balance,payDue,notDue};
@@ -1466,14 +1466,18 @@ function renderInvPay(mc){
     const cmap={};
     invRows.forEach(r=>{
       if(!r.cl) return;
-      if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0};
+      if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0,creditDays:r.creditDays||30,maxDaysOD:0,hasOverdue:false};
       cmap[r.cl].invRaised+=r.iAmt||0;
       cmap[r.cl].payColl+=r.payRec||0;
+      if(r.creditDays) cmap[r.cl].creditDays=r.creditDays;
     });
     dueRows.forEach(r=>{
       if(!r.cl) return;
-      if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0};
+      if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0,creditDays:r.creditDays||30,maxDaysOD:0,hasOverdue:false};
       cmap[r.cl].payDue+=r.payDue||0;
+      cmap[r.cl].hasOverdue=true;
+      cmap[r.cl].maxDaysOD=Math.max(cmap[r.cl].maxDaysOD,r.daysOD||0);
+      if(r.creditDays) cmap[r.cl].creditDays=r.creditDays;
     });
     Object.values(cmap).forEach(c=>{c.balance=c.invRaised-c.payColl;c.notDue=Math.max(0,c.balance-c.payDue);});
     clientMap[g]=Object.entries(cmap).sort((a,b)=>b[1].invRaised-a[1].invRaised);
@@ -1501,9 +1505,17 @@ function renderInvPay(mc){
       <td style="color:${a.balance<0?'#b91c1c':a.balance>0?'#1d4ed8':'#374151'};font-weight:600">${fa(a.balance)}</td>
       <td style="color:${a.payDue>0?'#b91c1c':'#374151'};font-weight:${a.payDue>0?'700':'400'}">${fa(a.payDue)}</td>
       <td style="color:${a.notDue>0?'#0369a1':'#374151'}">${a.notDue>0?fa(a.notDue):'–'}</td>
+      <td style="color:#9ca3af;text-align:center">–</td>
+      <td style="color:#9ca3af;text-align:center">–</td>
+      <td style="text-align:center">–</td>
     </tr>`;
     clients.forEach(([cl,c])=>{
       const ccp=c.invRaised>0?Math.min(100,(c.payColl/c.invRaised)*100):0;
+      const statusTag=c.hasOverdue
+        ?`<span style="background:#fee2e2;color:#b91c1c;border-radius:5px;padding:1px 8px;font-size:10px;font-weight:700">Overdue</span>`
+        :c.balance>0
+          ?`<span style="background:#dbeafe;color:#1d4ed8;border-radius:5px;padding:1px 8px;font-size:10px;font-weight:700">Not Due</span>`
+          :'–';
       rows+=`<tr class="ip-detail drow" style="display:none;background:#f8fafd">
         <td style="padding-left:32px;color:#374151;font-size:11.5px">↳ ${cl}</td>
         <td style="font-size:11px">${fa(c.invRaised)}</td>
@@ -1511,6 +1523,9 @@ function renderInvPay(mc){
         <td style="font-size:11px;color:${c.balance<0?'#b91c1c':c.balance>0?'#1d4ed8':'#374151'}">${fa(c.balance)}</td>
         <td style="font-size:11px;color:${c.payDue>0?'#b91c1c':'#6b7280'}">${c.payDue>0?fa(c.payDue):'–'}</td>
         <td style="font-size:11px;color:${c.notDue>0?'#0369a1':'#6b7280'}">${c.notDue>0?fa(c.notDue):'–'}</td>
+        <td style="font-size:11px;color:#6b7280;text-align:center">${c.creditDays||30}d</td>
+        <td style="font-size:11px;font-weight:600;text-align:center;color:${c.maxDaysOD>0?'#dc2626':'#6b7280'}">${c.maxDaysOD>0?c.maxDaysOD+'d':'–'}</td>
+        <td style="text-align:center">${statusTag}</td>
       </tr>`;
     });
   });
@@ -1522,6 +1537,7 @@ function renderInvPay(mc){
     <td>${fa(tot.balance)}</td>
     <td style="color:${tot.payDue>0?'#dc2626':'inherit'}">${fa(tot.payDue)}</td>
     <td style="color:${tot.notDue>0?'#0369a1':'inherit'}">${tot.notDue>0?fa(tot.notDue):'–'}</td>
+    <td colspan="3"></td>
   </tr>`;
 
   mc.innerHTML=`
@@ -1538,7 +1554,7 @@ function renderInvPay(mc){
           <span id="ipUnfoldIcon">▶</span> <span id="ipUnfoldLbl">Unfold All</span>
         </button>
       </div>
-      <div class="twrap"><table>
+      <div class="twrap"><table><colgroup><col><col><col><col><col><col><col class="ip-dcol" style="visibility:collapse"><col class="ip-dcol" style="visibility:collapse"><col class="ip-dcol" style="visibility:collapse"></colgroup>
         <thead>
           <tr>
             <th style="text-align:left;min-width:160px">Group / Client</th>
@@ -1547,6 +1563,9 @@ function renderInvPay(mc){
             <th>Balance to Collect</th>
             <th>Payment Due</th>
             <th>Payment Not Due</th>
+            <th>Credit Period</th>
+            <th>Days Overdue</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -1563,6 +1582,8 @@ function toggleIpGroup(hdrRow){
     row=row.nextElementSibling;
   }
   if(arrow) arrow.textContent=open?'▼':'▶';
+  const anyOpen=[...document.querySelectorAll('.ip-detail')].some(r=>r.style.display!=='none');
+  document.querySelectorAll('.ip-dcol').forEach(c=>c.style.visibility=anyOpen?'':'collapse');
 }
 function toggleIpAllGroups(){
   const icon=document.getElementById('ipUnfoldIcon');
@@ -1574,6 +1595,7 @@ function toggleIpAllGroups(){
   arrows.forEach(a=>{a.textContent=isOpen?'▶':'▼';});
   if(icon) icon.textContent=isOpen?'▶':'▼';
   if(lbl)  lbl.textContent=isOpen?'Unfold All Clients':'Fold All Clients';
+  document.querySelectorAll('.ip-dcol').forEach(c=>c.style.visibility=isOpen?'collapse':'');
 }
 
 /* ── SLIDE 4: PENDING RECEIVABLES ── */
@@ -1893,10 +1915,11 @@ function renderOrder(mc){
         <td colspan="2" style="padding:9px 14px;font-weight:700;font-size:12.5px;color:#003366">
           <span class="so-arrow" style="font-size:10px;color:#64748b;display:inline-block;transition:transform 0.2s;margin-right:6px">▶</span>${client} <span style="font-size:10px;color:#94a3b8;font-weight:400;margin-left:6px">${cd.orders.length} order${cd.orders.length>1?'s':''}</span>
         </td>
-        <td colspan="4" style="text-align:right;padding-right:8px;font-size:11px">${hasActive?'<span style="color:#16a34a;font-weight:600">● Active</span>':'<span style="color:#94a3b8">Closed</span>'}</td>
-        <td></td>
+        <td class="s6-fc" style="display:none"></td>
+        <td style="text-align:center;font-size:11px">${hasActive?'<span style="color:#16a34a;font-weight:600">● Active</span>':'<span style="color:#94a3b8">● Closed</span>'}</td>
+        <td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td>
         <td style="text-align:right;font-family:monospace;font-weight:700;color:#003366">${fa(cd.totalVal)}</td>
-        <td></td>
+        <td class="s6-fc" style="display:none"></td>
       </tr>`;
       cd.orders.forEach(r => {
         const lbdr = {'Closed':'#22c55e','In Progress':'#3b82f6','In progress':'#3b82f6','Payment':'#eab308','Open':'#a855f7','To Invoice':'#f97316','On hold':'#94a3b8','Cancelled':'#ef4444'}[r.status]||'#e2e8f0';
@@ -1927,8 +1950,10 @@ function renderOrder(mc){
       });
     });
     trows += `<tr class="tot">
-      <td colspan="9" style="text-align:left;padding-left:14px">${clientEntries.length} clients · ${data.length} orders</td>
-      <td>${fa(grandTotal)}</td><td></td>
+      <td colspan="2" style="text-align:left;padding-left:14px">${clientEntries.length} clients · ${data.length} orders</td>
+      <td class="s6-fc" style="display:none"></td><td></td>
+      <td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td><td class="s6-fc" style="display:none"></td>
+      <td>${fa(grandTotal)}</td><td class="s6-fc" style="display:none"></td>
     </tr>`;
   }
 
@@ -1956,19 +1981,19 @@ function renderOrder(mc){
           </button>
         </div>
       </div>
-      <div class="twrap"><table>
+      <div class="twrap"><table style="width:100%">
         <thead><tr>
           <th style="text-align:left;min-width:90px">Order No.</th>
           <th style="text-align:left;min-width:80px">Group</th>
-          <th style="text-align:left;min-width:140px">Description</th>
+          <th class="s6-fc" style="text-align:left;min-width:140px;display:none">Description</th>
           <th class="tc">Status</th>
-          <th>End Date</th>
-          <th>Actual End Date</th>
-          <th>Delay Days</th>
-          <th class="tc">Sales Person</th>
-          <th style="min-width:100px">Completion</th>
+          <th class="s6-fc" style="display:none">End Date</th>
+          <th class="s6-fc" style="display:none">Actual End Date</th>
+          <th class="s6-fc" style="display:none">Delay Days</th>
+          <th class="s6-fc tc" style="display:none">Sales Person</th>
+          <th class="s6-fc" style="min-width:100px;display:none">Completion</th>
           <th>Order Value<br><small style="font-weight:400;opacity:.7">(Incl. VAT)</small></th>
-          <th style="text-align:left">Challenges / Notes</th>
+          <th class="s6-fc" style="text-align:left;display:none">Challenges / Notes</th>
         </tr></thead>
         <tbody>${trows}</tbody>
       </table></div>
@@ -2108,6 +2133,10 @@ function toggleClientRows(hdr, cls) {
   const isOpen = rows.length && rows[0].style.display !== 'none';
   rows.forEach(r => r.style.display = isOpen ? 'none' : '');
   if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
+  if(cls==='order-detail-row'){
+    const anyOpen=[...document.querySelectorAll('tr.order-detail-row')].some(r=>r.style.display!=='none');
+    document.querySelectorAll('.s6-fc').forEach(el=>el.style.display=anyOpen?'':'none');
+  }
 }
 
 /* ── TOGGLE ORDER ROWS (Slide 6) ── */
@@ -2121,6 +2150,7 @@ function toggleOrderRows(){
   const lbl  = document.getElementById('orderUnfoldLbl');
   if(icon) icon.textContent = ordersUnfolded ? '▼' : '▶';
   if(lbl)  lbl.textContent  = ordersUnfolded ? 'Fold All Orders' : 'Unfold All Orders';
+  document.querySelectorAll('.s6-fc').forEach(el=>el.style.display=ordersUnfolded?'':'none');
 }
 
 /* ── TOGGLE ALL INVOICE ROWS ── */
