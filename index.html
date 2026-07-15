@@ -2660,7 +2660,7 @@ async function generatePPT(scope){
         else if(fSort==='days')cent.sort((a,b)=>b[1].maxD-a[1].maxD);
         else cent.sort((a,b)=>a[0].localeCompare(b[0]));
         const GCOL={A:'3b82f6',B:'22c55e',C:'f59e0b',D:'f43f5e','–':LGRY};
-        const cw=[3.1,0.55,0.6,1.05,0.9,1.05,1.75,0.75,1.75,1.03];
+        const cw=[3.7,0.55,0.6,1.05,0.9,1.05,1.75,0.75,1.75,1.03]; // sum=13.13
         const rows=[];
         rows.push(['Client / Invoice','Grade','Credit','Invoice Date','Days Since Inv','Due Date','Inv Amount (AED)','Days OD','Balance (AED)','Status'].map((c,i)=>({text:c,options:{bold:true,color:WHITE,fill:{color:NAVY2},align:i===0?'left':'center',fontSize:7.5,valign:'middle'}})));
         cent.forEach(([cn,cd])=>{
@@ -2686,7 +2686,7 @@ async function generatePPT(scope){
         sl.addText('Low Lights',{x:0.1,y:TBL_TOP,w:3,h:0.3,fontSize:13,color:'b91c1c',bold:true,isTextBox:true});
         sl.addText(llOpen2+' Open · '+SITE_DATA.length+' Total',{x:3.2,y:TBL_TOP+0.04,w:3,h:0.24,fontSize:9,color:LGRY,isTextBox:true});
         const llCols=['Project','Date','Group','Description','Risk','Solution Date','Status'];
-        const llCW=[2.0,1.0,1.0,3.5,0.8,1.0,0.9];
+        const llCW=[2.0,0.75,0.75,2.6,0.62,0.75,0.67]; // sum=8.14=TBL_W*0.62
         const llRows2=[];
         llRows2.push(llCols.map(c=>({text:c,options:{bold:true,color:WHITE,fill:{color:'b91c1c'},align:'center',fontSize:7.5,valign:'middle'}})));
         llRows2[0][0].options.align='left'; llRows2[0][3].options.align='left';
@@ -2705,7 +2705,7 @@ async function generatePPT(scope){
         sl.addText('High Lights',{x:TBL_W*0.64,y:TBL_TOP,w:3,h:0.3,fontSize:13,color:'15803d',bold:true,isTextBox:true});
         sl.addText(HIGHLIGHT_DATA.length+' Items',{x:TBL_W*0.64+3.1,y:TBL_TOP+0.04,w:2,h:0.24,fontSize:9,color:LGRY,isTextBox:true});
         const hlCols=['Project','Date','Group','Description'];
-        const hlCW=[1.5,0.9,1.0,1.8];
+        const hlCW=[1.4,0.7,0.75,1.75]; // sum=4.60=TBL_W*0.35
         const hlRows2=[];
         hlRows2.push(hlCols.map(c=>({text:c,options:{bold:true,color:WHITE,fill:{color:'15803d'},align:'center',fontSize:7.5,valign:'middle'}})));
         hlRows2[0][0].options.align='left'; hlRows2[0][3].options.align='left';
@@ -2744,7 +2744,7 @@ async function generatePPT(scope){
         data.forEach(r=>{if(!cm3[r.client])cm3[r.client]={orders:[],totalVal:0};cm3[r.client].orders.push(r);cm3[r.client].totalVal+=r.orderValTax||0;});
         const clients3=Object.entries(cm3).sort((a,b)=>b[1].totalVal-a[1].totalVal);
         const SC={'Closed':GRN,'In Progress':'1e40af','In progress':'1e40af','Payment':'854d0e','Open':'6b21a8','To Invoice':'9a3412','On hold':'475569','Cancelled':'991b1b'};
-        const cw=[2.5,2.25,0.83,0.82,0.82,0.83,0.68,0.9,0.73,1.48,1.49];
+        const cw=[2.5,2.05,0.83,0.82,0.82,0.83,0.68,0.9,0.73,1.48,1.49]; // sum=13.13
         const rows=[];
         rows.push(['Client / Order No','Description','Status','Start','End','Actual End','Delay','Sales Person','Completion','Order Value (AED)','Challenges / Notes'].map((c,i)=>({text:c,options:{bold:true,color:WHITE,fill:{color:NAVY2},align:i<=1||i===10?'left':'center',fontSize:7.5,valign:'middle'}})));
         clients3.forEach(([cn,cd])=>{
@@ -2814,7 +2814,7 @@ async function generatePPT(scope){
           rows.push([{text:MN[m-1],options:{bold:true,fill:{color:bg},align:'left',fontSize:9,color:NAVY2,valign:'middle'}},{text:String(d.pCnt),options:{fill:{color:bg},align:'center',fontSize:8.5,color:LGRY,valign:'middle'}},{text:fNum(d.plan),options:{fill:{color:bg},align:'right',fontSize:8.5,fontFace:'Courier New',color:'0369a1',valign:'middle'}},{text:String(d.aCnt),options:{fill:{color:bg},align:'center',fontSize:8.5,color:LGRY,valign:'middle'}},{text:fNum(d.actual),options:{fill:{color:bg},align:'right',fontSize:8.5,fontFace:'Courier New',color:GRN,valign:'middle'}},{text:d.plan>0||d.actual>0?(v>=0?'+':'')+Number(v).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}):'–',options:{fill:{color:bg},align:'right',fontSize:8.5,fontFace:'Courier New',color:v>=0?GRN:RED,bold:true,valign:'middle'}},{text:pct==='–'||pct==='N/A'?pct:pct+'%',options:{fill:{color:bg},align:'center',fontSize:8.5,bold:true,color:parseInt(pct)>=100?GRN:parseInt(pct)>=75?'d97706':RED,valign:'middle'}}]);
         }
         rows.push([{text:'TOTAL',options:{bold:true,color:WHITE,fill:{color:NAVY},align:'left',fontSize:9,valign:'middle'}},{text:'',options:{fill:{color:NAVY},valign:'middle'}},{text:fNum(tP),options:{bold:true,color:WHITE,fill:{color:NAVY},align:'right',fontSize:9,fontFace:'Courier New',valign:'middle'}},{text:'',options:{fill:{color:NAVY},valign:'middle'}},{text:fNum(tA),options:{bold:true,color:WHITE,fill:{color:NAVY},align:'right',fontSize:9,fontFace:'Courier New',valign:'middle'}},{text:(vr>=0?'+':'')+Number(vr).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}),options:{bold:true,color:vr>=0?'86efac':'fca5a5',fill:{color:NAVY},align:'right',fontSize:9,fontFace:'Courier New',valign:'middle'}},{text:ap+'%',options:{bold:true,color:parseFloat(ap)>=100?'86efac':'fca5a5',fill:{color:NAVY},align:'center',fontSize:9,valign:'middle'}}]);
-        sl.addTable(rows,{x:0.1,y:TBL_TOP,w:TBL_W,colW:cw,rowH:0.33,border:{type:'solid',pt:0.5,color:'D1D5DB'},autoPage:true,autoPageRepeatHeader:true});
+        sl.addTable(rows,{x:0.1,y:TBL_TOP,w:TBL_W,colW:cw,rowH:0.33,border:{type:'solid',pt:0.5,color:'D1D5DB'}});
       }
 
       else if(s==='paytgt'){
@@ -2842,7 +2842,7 @@ async function generatePPT(scope){
           rows.push([{text:MN[m-1],options:{bold:true,fill:{color:bg},align:'left',fontSize:9,color:NAVY2,valign:'middle'}},{text:String(d.tCnt),options:{fill:{color:bg},align:'center',fontSize:8.5,color:LGRY,valign:'middle'}},{text:fNum(d.tgt),options:{fill:{color:bg},align:'right',fontSize:8.5,fontFace:'Courier New',color:'0369a1',valign:'middle'}},{text:String(d.aCnt),options:{fill:{color:bg},align:'center',fontSize:8.5,color:LGRY,valign:'middle'}},{text:fNum(d.act),options:{fill:{color:bg},align:'right',fontSize:8.5,fontFace:'Courier New',color:GRN,valign:'middle'}},{text:d.tgt>0||d.act>0?(v>=0?'+':'')+Number(v).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}):'–',options:{fill:{color:bg},align:'right',fontSize:8.5,fontFace:'Courier New',color:v>=0?GRN:RED,bold:true,valign:'middle'}},{text:pct==='–'||pct==='N/A'?pct:pct+'%',options:{fill:{color:bg},align:'center',fontSize:8.5,bold:true,color:parseInt(pct)>=100?GRN:parseInt(pct)>=75?'d97706':RED,valign:'middle'}}]);
         }
         rows.push([{text:'TOTAL',options:{bold:true,color:WHITE,fill:{color:NAVY},align:'left',fontSize:9,valign:'middle'}},{text:'',options:{fill:{color:NAVY},valign:'middle'}},{text:fNum(tT),options:{bold:true,color:WHITE,fill:{color:NAVY},align:'right',fontSize:9,fontFace:'Courier New',valign:'middle'}},{text:'',options:{fill:{color:NAVY},valign:'middle'}},{text:fNum(tA),options:{bold:true,color:WHITE,fill:{color:NAVY},align:'right',fontSize:9,fontFace:'Courier New',valign:'middle'}},{text:(vr>=0?'+':'')+Number(vr).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}),options:{bold:true,color:vr>=0?'86efac':'fca5a5',fill:{color:NAVY},align:'right',fontSize:9,fontFace:'Courier New',valign:'middle'}},{text:cp+'%',options:{bold:true,color:parseFloat(cp)>=100?'86efac':'fca5a5',fill:{color:NAVY},align:'center',fontSize:9,valign:'middle'}}]);
-        sl.addTable(rows,{x:0.1,y:TBL_TOP,w:TBL_W,colW:cw,rowH:0.33,border:{type:'solid',pt:0.5,color:'D1D5DB'},autoPage:true,autoPageRepeatHeader:true});
+        sl.addTable(rows,{x:0.1,y:TBL_TOP,w:TBL_W,colW:cw,rowH:0.33,border:{type:'solid',pt:0.5,color:'D1D5DB'}});
       }
     }
 
