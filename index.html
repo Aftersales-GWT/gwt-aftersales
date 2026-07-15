@@ -2463,8 +2463,9 @@ async function generatePPT(scope){
     pptx.company = 'Gulf Water Technology';
     pptx.subject = 'After-Sales Review';
 
-    const NAVY='002855', NAVY2='003366', WHITE='FFFFFF', LGRAY='F0F5FB', LGRAY2='F8FAFD';
+    const NAVY='002855', NAVY2='003366', WHITE='FFFFFF', LGRAY='F0F4F8', LGRAY2='F8FAFD';
     const GRN='16a34a', RED='dc2626', BLU='1d4ed8', GRAY='374151', LGRY='6B7280';
+    const LOGO_DATA='data:image/png;base64,'+GWT_LOGO_B64;
     const fNum=v=>v>0?Number(v).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}):'–';
 
     const SLIDE_MAP={
@@ -2475,45 +2476,69 @@ async function generatePPT(scope){
     const ALL_KEYS=['cover','guide','salesov','invpay','rec','site','order','late','invplan','paytgt'];
     const toGen = scope==='all' ? ALL_KEYS : [SLIDE_MAP[activeSlide]||'cover'];
 
+    // Slide background (light gray-blue matching the template)
+    function slideBg(slide){
+      slide.addShape('rect',{x:0,y:0,w:'100%',h:'100%',fill:{color:LGRAY}});
+    }
+
+    // Template header: navy bar + GWT logo + title + cyan accent stripe
     function hdr(slide, title, sub=''){
-      slide.addShape('rect',{x:0,y:0,w:'100%',h:0.72,fill:{color:NAVY}});
-      slide.addText('GWT After-Sales Review',{x:0.22,y:0.07,w:6,h:0.22,fontSize:9,color:'90B8D0',bold:false,isTextBox:true});
-      slide.addText(title,{x:0.22,y:0.28,w:10,h:0.34,fontSize:20,color:WHITE,bold:true,isTextBox:true});
-      if(sub) slide.addText(sub,{x:0.22,y:0.56,w:10,h:0.17,fontSize:8.5,color:'a0b4c8',isTextBox:true});
+      slideBg(slide);
+      // Navy header bar
+      slide.addShape('rect',{x:0,y:0,w:'100%',h:0.58,fill:{color:NAVY2}});
+      // Cyan accent stripe below
+      slide.addShape('rect',{x:0,y:0.58,w:'100%',h:0.05,fill:{color:'00B4D8'}});
+      // GWT logo (small, white background of bar)
+      slide.addImage({data:LOGO_DATA,x:0.13,y:0.06,w:0.92,h:0.45});
+      // Slide title
+      slide.addText(title,{x:1.25,y:0.07,w:9.5,h:0.3,fontSize:14,color:WHITE,bold:true,isTextBox:true,fontFace:'Segoe UI'});
+      if(sub) slide.addText(sub,{x:1.25,y:0.36,w:9,h:0.19,fontSize:8.5,color:'B0C4DE',isTextBox:true,fontFace:'Segoe UI'});
+      // Date right-aligned
       const ds=TODAY.toLocaleDateString('en-AE',{day:'2-digit',month:'short',year:'numeric'});
-      slide.addText('As of '+ds,{x:10.5,y:0.24,w:2.7,h:0.22,fontSize:8.5,color:'7099b8',align:'right',isTextBox:true});
+      slide.addText('As of '+ds,{x:10.5,y:0.07,w:2.7,h:0.22,fontSize:8.5,color:'B0C4DE',align:'right',isTextBox:true,fontFace:'Segoe UI'});
     }
 
     function kpiBar(slide, kpis){
-      const n=kpis.length, bw=(13.33-0.2)/n-0.08;
+      const n=kpis.length, bw=(13.33-0.22)/n-0.08;
       kpis.forEach((k,i)=>{
-        const x=0.1+i*((13.33-0.2)/n);
-        slide.addShape('rect',{x,y:0.78,w:bw,h:0.76,fill:{color:k.bg||LGRAY},line:{color:'D1D5DB',pt:0.5},rectRadius:0.06});
-        slide.addText(k.label,{x,y:0.81,w:bw,h:0.2,fontSize:8,color:LGRY,align:'center',isTextBox:true});
-        slide.addText(k.val,{x,y:0.98,w:bw,h:0.32,fontSize:15,color:k.col||NAVY2,bold:true,align:'center',isTextBox:true});
-        if(k.sub) slide.addText(k.sub,{x,y:1.28,w:bw,h:0.17,fontSize:7.5,color:'9CA3AF',align:'center',isTextBox:true});
+        const x=0.11+i*((13.33-0.22)/n);
+        slide.addShape('rect',{x,y:0.7,w:bw,h:0.82,fill:{color:WHITE},line:{color:'D1D5DB',pt:0.5},rectRadius:0.06});
+        // Color accent line at top of KPI card
+        slide.addShape('rect',{x,y:0.7,w:bw,h:0.06,fill:{color:k.col||NAVY2},rectRadius:0.04});
+        slide.addText(k.label,{x,y:0.77,w:bw,h:0.2,fontSize:7.5,color:LGRY,align:'center',isTextBox:true,fontFace:'Segoe UI'});
+        slide.addText(k.val,{x,y:0.94,w:bw,h:0.36,fontSize:16,color:k.col||NAVY2,bold:true,align:'center',isTextBox:true,fontFace:'Segoe UI'});
+        if(k.sub) slide.addText(k.sub,{x,y:1.28,w:bw,h:0.18,fontSize:7,color:'9CA3AF',align:'center',isTextBox:true,fontFace:'Segoe UI'});
       });
     }
 
-    const TBL_TOP=1.62, TBL_W=13.13;
+    const TBL_TOP=1.60, TBL_W=13.13;
     const HOPTS=(c,i,lft)=>({text:c,options:{bold:true,color:WHITE,fill:{color:NAVY2},align:lft?'left':'center',fontSize:8,valign:'middle'}});
     const TOPTS=(bg)=>({fill:{color:bg||WHITE},fontSize:8,valign:'middle'});
 
     for(const s of toGen){
       if(s==='cover'){
         const sl=pptx.addSlide();
-        sl.addShape('rect',{x:0,y:0,w:'100%',h:'100%',fill:{color:NAVY}});
-        sl.addShape('rect',{x:0,y:2.9,w:'100%',h:0.06,fill:{color:'1a5276'}});
-        sl.addText('Gulf Water Technology',{x:0.5,y:1.2,w:12.33,h:1.1,fontSize:44,color:WHITE,bold:true,align:'center',isTextBox:true});
-        sl.addText('After-Sales Review Dashboard',{x:0.5,y:2.4,w:12.33,h:0.7,fontSize:26,color:'90C8E8',align:'center',isTextBox:true});
+        // White background
+        sl.addShape('rect',{x:0,y:0,w:'100%',h:'100%',fill:{color:WHITE}});
+        // Three-band header (navy → blue → cyan) matching original template
+        sl.addShape('rect',{x:0,y:0,w:'100%',h:0.18,fill:{color:NAVY2}});
+        sl.addShape('rect',{x:0,y:0.18,w:'100%',h:0.09,fill:{color:'0077B6'}});
+        sl.addShape('rect',{x:0,y:0.27,w:'100%',h:0.06,fill:{color:'00B4D8'}});
+        // Large GWT logo centered
+        sl.addImage({data:LOGO_DATA,x:3.5,y:1.05,w:6.33,h:2.1});
+        // Divider accent line
+        sl.addShape('rect',{x:0.5,y:3.5,w:12.33,h:0.04,fill:{color:'0077B6'}});
+        // Title & subtitle
+        sl.addText('After-Sales Review',{x:0.5,y:3.65,w:12.33,h:0.7,fontSize:30,color:NAVY2,bold:true,align:'center',isTextBox:true,fontFace:'Segoe UI'});
+        sl.addText('Gulf Water Technology',{x:0.5,y:4.3,w:12.33,h:0.5,fontSize:18,color:'0077B6',align:'center',isTextBox:true,fontFace:'Segoe UI'});
         const ds=TODAY.toLocaleDateString('en-AE',{day:'2-digit',month:'long',year:'numeric'});
-        sl.addText(ds,{x:0.5,y:3.3,w:12.33,h:0.45,fontSize:15,color:'7ab3d0',align:'center',isTextBox:true});
-        sl.addText('Confidential · Internal Use Only',{x:0.5,y:6.5,w:12.33,h:0.3,fontSize:10,color:'3a6a8a',align:'center',isTextBox:true});
+        sl.addText(ds,{x:0.5,y:4.85,w:12.33,h:0.4,fontSize:13,color:'64748b',align:'center',isTextBox:true,fontFace:'Segoe UI'});
+        sl.addText('Confidential · Internal Use Only',{x:0.5,y:6.9,w:12.33,h:0.28,fontSize:9,color:'94a3b8',align:'center',isTextBox:true,fontFace:'Segoe UI'});
       }
 
       else if(s==='guide'){
         const sl=pptx.addSlide();
-        hdr(sl,'Guidelines & Notes');
+        hdr(sl,'Guidelines & Notes','Data sources, calculation rules and usage notes');
         sl.addText('This presentation is generated live from the GWT After-Sales Dashboard.',{x:0.3,y:0.85,w:12.7,h:0.28,fontSize:11,color:GRAY,isTextBox:true});
         const lines=[
           '• Data is sourced directly from Google Sheets and reflects current records at the time of export.',
