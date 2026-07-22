@@ -306,7 +306,7 @@ const GS_SALES_PUB = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQm2xv8LIn
 const INV_PUB_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQifc18SjaVhxuUobm3YKmjPZSLIY84KBn9olAvDwSeU9Ij1gfnR0T3ZXIOaScMAJguM1jgyYEAM9FI/pub?gid=1506445163&single=true&output=csv';
 const SALES_PUB_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQm2xv8LInfyitwBt14bUtQBPSnKzoJRcns5umht6oEmC_X7StX5_9D06pqurpBWjNe6Yc6nHQRYZmd/pub?gid=412702087&single=true&output=csv';
 const GAS_PROXY    = 'https://script.google.com/macros/s/AKfycby5TMVM1Zn-6LrAvlRPOMfWdEaFw2ixdWaznklk9BQw0pDVKuQZzscTcnt83G9Xy2MP/exec'; // Apps Script proxy — bypasses CORS
-const GS_SITE_PUB  = ''; // Slide 6 Site Report — paste your published Google Sheet CSV URL here
+const GS_SITE_PUB  = 'https://docs.google.com/spreadsheets/d/1u1n1HZEGMcv0QIgumR1kuj_cUtDQ-dez6erEjhAeqeA/export?format=csv&gid=1264035629'; // Slide 6 Site Report
 let SITE_DATA=[],HIGHLIGHT_DATA=[];
 
 // Multiple URL formats — browser tries each until one works
@@ -377,6 +377,22 @@ function parseCSV(text) {
   });
 }
 
+// Positional CSV parse (returns arrays, not objects) — needed when a sheet
+// repeats a header name (Site Report has two "Date" columns) since keyed
+// parsing collapses duplicate keys to the last occurrence.
+function parseCSVRaw(text) {
+  return text.trim().split('\n').map(line => {
+    const vals = [];
+    let cur = '', inQ = false;
+    for(let c of line) {
+      if(c==='"') inQ=!inQ;
+      else if(c===',' && !inQ) { vals.push(cur.trim()); cur=''; }
+      else cur+=c;
+    }
+    vals.push(cur.trim());
+    return vals;
+  });
+}
 function cleanNum(v) {
   if(!v||v===''||v==='-'||v==='–') return 0;
   return parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0;
@@ -384,6 +400,31 @@ function cleanNum(v) {
 function cleanDate(v) {
   if(!v||v===''||v==='-') return null;
   try { const d=new Date(v); return isNaN(d)?null:d.toISOString().slice(0,10); } catch(e) { return null; }
+}
+
+async function loadSiteReport() {
+  if(!GS_SITE_PUB) return;
+  try{
+    // Direct fetch tends to succeed for this export URL; proxy is the fallback.
+    const siteText=await fetchWithCORS([GS_SITE_PUB,'https://api.codetabs.com/v1/proxy?quest='+GS_SITE_PUB]);
+    if(siteText){
+      // Single table: Project, Date, Group, Description, Risk, Solution Date, Solution provided, Status.
+      // "Group" holds "Low Lights" or "Hilights" — it routes the row, it isn't a display field.
+      const siteRows=parseCSVRaw(siteText).slice(1);
+      SITE_DATA.length=0; HIGHLIGHT_DATA.length=0;
+      siteRows.forEach(v=>{
+        const proj=(v[0]||'').replace(/^﻿/,'').trim();
+        if(!proj)return;
+        const kind=(v[2]||'').trim().toLowerCase();
+        if(kind.indexOf('high')>=0||kind.indexOf('hilight')>=0){
+          HIGHLIGHT_DATA.push({project:proj,date:(v[1]||'').trim(),desc:(v[3]||'').trim()});
+        } else {
+          SITE_DATA.push({project:proj,date:(v[1]||'').trim(),desc:(v[3]||'').trim(),risk:(v[4]||'').trim(),solDate:(v[5]||'').trim(),solution:(v[6]||'').trim(),status:(v[7]||'Open').trim()});
+        }
+      });
+      if(activeSlide==='s-site') renderActive();
+    }
+  }catch(e){console.warn('Site report fetch failed:',e.message);}
 }
 
 async function fetchLiveData() {
@@ -398,6 +439,10 @@ async function fetchLiveData() {
       const n = parseFloat(s)||0;
       return n > 0 && n <= 1 ? Math.round(n*100) : Math.round(n);
     }
+
+    // Kick off Site Report fetch concurrently — it doesn't depend on Invoice/Sales
+    // and was previously only started after both finished, adding dead wait time.
+    const sitePromise = loadSiteReport();
 
     // Fetch Invoice & Payments
     try {
@@ -512,26 +557,7 @@ async function fetchLiveData() {
     renderActive();
     dataLoaded = true;
 
-    // Fetch site report data if URL is configured
-    if(GS_SITE_PUB){
-      try{
-        const siteText=await fetchWithCORS(['https://api.codetabs.com/v1/proxy?quest='+GS_SITE_PUB,GS_SITE_PUB]);
-        if(siteText){
-          const siteRows=parseCSV(siteText);
-          SITE_DATA.length=0; HIGHLIGHT_DATA.length=0;
-          siteRows.forEach(r=>{
-            const proj=(r['Project']||r['project']||'').trim();
-            if(!proj)return;
-            const d={project:proj,date:(r['Date']||r['date']||'').trim(),group:(r['Group']||r['group']||'').trim(),desc:(r['Description']||r['description']||'').trim(),risk:(r['Risk']||r['risk']||'').trim(),solDate:(r['Solution Date']||r['solution date']||'').trim(),solution:(r['Solution Provided']||r['solution provided']||'').trim(),status:(r['Status']||r['status']||'Open').trim()};
-            SITE_DATA.push(d);
-            // High Lights start from column J (index 9)
-            const hProj=(r['Project_1']||r['Project.1']||Object.values(r)[9]||'').trim();
-            if(hProj) HIGHLIGHT_DATA.push({project:hProj,date:(r['Date_1']||r['Date.1']||Object.values(r)[10]||'').trim(),group:(r['Group_1']||r['Group.1']||Object.values(r)[11]||'').trim(),desc:(r['Description_1']||r['Description.1']||Object.values(r)[12]||'').trim()});
-          });
-          if(activeSlide==='s-site') renderActive();
-        }
-      }catch(e){console.warn('Site report fetch failed:',e.message);}
-    }
+    await sitePromise;
 
   } catch(e) {
     console.warn('Live fetch failed, using embedded data:', e.message);
@@ -1854,7 +1880,7 @@ function renderSiteReport(mc){
   let ll=SITE_DATA.filter(r=>{
     if(srMonth!=='all'){const dm=r.date?new Date(r.date):null;if(!dm||isNaN(dm)||String(dm.getMonth()+1)!==srMonth)return false;}
     if(srRisk!=='all'&&(r.risk||'').toLowerCase()!==srRisk.toLowerCase())return false;
-    if(srStatus!=='all'){const rs=(r.status||'').toLowerCase(),fs=srStatus.toLowerCase();if(rs!==fs&&!(fs==='done'&&(rs==='resolved'||rs==='closed')))return false;}
+    if(srStatus!=='all'){const rs=(r.status||'').toLowerCase(),fs=srStatus.toLowerCase();if(rs!==fs&&!(fs==='done'&&(rs==='resolved'||rs==='closed'||rs==='completed')))return false;}
     return true;
   });
   // Filter high lights
@@ -1863,12 +1889,12 @@ function renderSiteReport(mc){
     return true;
   });
 
-  const llOpen=ll.filter(r=>!['done','resolved','closed'].includes((r.status||'').toLowerCase())).length;
+  const llOpen=ll.filter(r=>!['done','resolved','closed','completed'].includes((r.status||'').toLowerCase())).length;
   const llHigh=ll.filter(r=>(r.risk||'').toLowerCase()==='high').length;
-  const llResolved=ll.filter(r=>['done','resolved','closed'].includes((r.status||'').toLowerCase())).length;
+  const llResolved=ll.filter(r=>['done','resolved','closed','completed'].includes((r.status||'').toLowerCase())).length;
 
   const RISK_STYLE={high:'background:#fee2e2;color:#b91c1c',medium:'background:#fff7ed;color:#9a3412',low:'background:#dcfce7;color:#15803d'};
-  const STATUS_STYLE={open:'background:#fef9c3;color:#854d0e',done:'background:#dcfce7;color:#15803d',resolved:'background:#dcfce7;color:#15803d',closed:'background:#dcfce7;color:#15803d'};
+  const STATUS_STYLE={open:'background:#fef9c3;color:#854d0e',done:'background:#dcfce7;color:#15803d',resolved:'background:#dcfce7;color:#15803d',closed:'background:#dcfce7;color:#15803d',completed:'background:#dcfce7;color:#15803d'};
 
   function riskTag(r){const k=(r||'').toLowerCase();return `<span style="border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;${RISK_STYLE[k]||'background:#f1f5f9;color:#475569'}">${r||'–'}</span>`;}
   function statusTag(s){const k=(s||'').toLowerCase();return `<span style="border-radius:5px;padding:2px 8px;font-size:10px;font-weight:700;${STATUS_STYLE[k]||'background:#f1f5f9;color:#475569'}">${s||'–'}</span>`;}
@@ -1876,14 +1902,13 @@ function renderSiteReport(mc){
   // Build low lights rows
   let llRows='';
   if(ll.length===0){
-    llRows=`<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px;font-size:12px">${SITE_DATA.length===0?'No site report data — configure <code>GS_SITE_PUB</code> with your Google Sheet URL':'No low light items match the current filters'}</td></tr>`;
+    llRows=`<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:32px;font-size:12px">${SITE_DATA.length===0?'No site report data — configure <code>GS_SITE_PUB</code> with your Google Sheet URL':'No low light items match the current filters'}</td></tr>`;
   } else {
     ll.forEach((r,i)=>{
       const bg=i%2===0?'#fef2f2':'#fff';
       llRows+=`<tr style="background:${bg};border-bottom:1px solid #fecaca">
         <td style="padding:7px 10px;font-weight:600;color:#1f2937;font-size:11.5px">${r.project||'–'}</td>
         <td style="font-size:11px;color:#64748b;white-space:nowrap">${fd2(r.date)}</td>
-        <td style="font-size:11px"><span style="background:#e0f2fe;color:#0369a1;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700">${r.group||'–'}</span></td>
         <td style="font-size:11px;color:#374151;max-width:200px">${r.desc||'–'}</td>
         <td style="text-align:center">${riskTag(r.risk)}</td>
         <td style="font-size:11px;color:#64748b;white-space:nowrap">${fd2(r.solDate)}</td>
@@ -1895,14 +1920,13 @@ function renderSiteReport(mc){
   // Build high lights rows
   let hlRows='';
   if(hl.length===0){
-    hlRows=`<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:32px;font-size:12px">${HIGHLIGHT_DATA.length===0?'No highlights data — configure <code>GS_SITE_PUB</code> with your Google Sheet URL':'No highlight items match the current filters'}</td></tr>`;
+    hlRows=`<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:32px;font-size:12px">${HIGHLIGHT_DATA.length===0?'No highlights data — configure <code>GS_SITE_PUB</code> with your Google Sheet URL':'No highlight items match the current filters'}</td></tr>`;
   } else {
     hl.forEach((r,i)=>{
       const bg=i%2===0?'#f0fdf4':'#fff';
       hlRows+=`<tr style="background:${bg};border-bottom:1px solid #bbf7d0">
         <td style="padding:7px 10px;font-weight:600;color:#1f2937;font-size:11.5px">${r.project||'–'}</td>
         <td style="font-size:11px;color:#64748b;white-space:nowrap">${fd2(r.date)}</td>
-        <td style="font-size:11px"><span style="background:#e0f2fe;color:#0369a1;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700">${r.group||'–'}</span></td>
         <td style="font-size:11px;color:#374151">${r.desc||'–'}</td>
       </tr>`;
     });
@@ -1928,7 +1952,6 @@ function renderSiteReport(mc){
           <thead><tr style="background:#fff5f5">
             <th style="text-align:left">Project</th>
             <th style="white-space:nowrap">Date</th>
-            <th>Group</th>
             <th style="text-align:left;min-width:140px">Description</th>
             <th>Risk</th>
             <th style="white-space:nowrap">Solution Date</th>
@@ -1946,7 +1969,6 @@ function renderSiteReport(mc){
           <thead><tr style="background:#f0fdf4">
             <th style="text-align:left">Project</th>
             <th style="white-space:nowrap">Date</th>
-            <th>Group</th>
             <th style="text-align:left;min-width:160px">Description</th>
           </tr></thead>
           <tbody>${hlRows}</tbody>
@@ -1955,8 +1977,8 @@ function renderSiteReport(mc){
     </div>
     ${(SITE_DATA.length===0&&HIGHLIGHT_DATA.length===0)?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-top:14px;font-size:11.5px;color:#92400e">
       <b>ℹ How to load site report data:</b> Set the <code>GS_SITE_PUB</code> constant in the code to your published Google Sheet CSV URL.
-      The sheet should have columns: <i>Project, Date, Group, Description, Risk, Solution Date, Solution Provided, Status</i> for Low Lights (columns A–H),
-      and <i>Project, Date, Group, Description</i> for High Lights (starting from column J of the same sheet).
+      The sheet should have columns: <i>Project, Date, Group, Description, Risk, Solution Date, Solution Provided, Status</i>, where <i>Group</i>
+      is set to "Low Lights" or "Hilights" per row to route it into the matching table.
     </div>`:''}`;
 }
 
@@ -2678,43 +2700,43 @@ async function generatePPT(scope){
       else if(s==='site'){
         const sl=pptx.addSlide();
         hdr(sl,'Site Report','Low lights and high lights from site operations');
-        const llOpen2=SITE_DATA.filter(r=>!['done','resolved','closed'].includes((r.status||'').toLowerCase())).length;
+        const llOpen2=SITE_DATA.filter(r=>!['done','resolved','closed','completed'].includes((r.status||'').toLowerCase())).length;
         const llHigh2=SITE_DATA.filter(r=>(r.risk||'').toLowerCase()==='high').length;
-        const llRes2=SITE_DATA.filter(r=>['done','resolved','closed'].includes((r.status||'').toLowerCase())).length;
+        const llRes2=SITE_DATA.filter(r=>['done','resolved','closed','completed'].includes((r.status||'').toLowerCase())).length;
         kpiBar(sl,[{label:'Low Light Items',val:String(SITE_DATA.length),col:RED},{label:'High Risk Issues',val:String(llHigh2),col:'d97706'},{label:'High Light Items',val:String(HIGHLIGHT_DATA.length),col:GRN},{label:'Resolved',val:String(llRes2),col:'6366f1'}]);
         // Low Lights table
         sl.addText('Low Lights',{x:0.1,y:TBL_TOP,w:3,h:0.3,fontSize:13,color:'b91c1c',bold:true,isTextBox:true});
         sl.addText(llOpen2+' Open · '+SITE_DATA.length+' Total',{x:3.2,y:TBL_TOP+0.04,w:3,h:0.24,fontSize:9,color:LGRY,isTextBox:true});
-        const llCols=['Project','Date','Group','Description','Risk','Solution Date','Status'];
-        const llCW=[2.0,0.75,0.75,2.6,0.62,0.75,0.67]; // sum=8.14=TBL_W*0.62
+        const llCols=['Project','Date','Description','Risk','Solution Date','Status'];
+        const llCW=[2.2,0.85,2.9,0.68,0.83,0.68]; // sum=8.14=TBL_W*0.62
         const llRows2=[];
         llRows2.push(llCols.map(c=>({text:c,options:{bold:true,color:WHITE,fill:{color:'b91c1c'},align:'center',fontSize:7.5,valign:'middle'}})));
-        llRows2[0][0].options.align='left'; llRows2[0][3].options.align='left';
+        llRows2[0][0].options.align='left'; llRows2[0][2].options.align='left';
         if(SITE_DATA.length===0){
-          llRows2.push([{text:'No site report data configured',options:{color:LGRY,fontSize:9,colspan:7,align:'center',fill:{color:WHITE},valign:'middle'}}]);
+          llRows2.push([{text:'No site report data configured',options:{color:LGRY,fontSize:9,colspan:6,align:'center',fill:{color:WHITE},valign:'middle'}}]);
         } else {
           SITE_DATA.forEach((r,i)=>{
             const bg=i%2===0?'FFF5F5':WHITE;
             const rCol=(r.risk||'').toLowerCase()==='high'?RED:(r.risk||'').toLowerCase()==='medium'?'d97706':GRN;
-            const stCol=['done','resolved','closed'].includes((r.status||'').toLowerCase())?GRN:'d97706';
-            llRows2.push([{text:r.project||'–',options:{fill:{color:bg},align:'left',fontSize:8,bold:true,valign:'middle'}},{text:r.date?new Date(r.date).toLocaleDateString('en-AE',{day:'2-digit',month:'short'}):'–',options:{fill:{color:bg},align:'center',fontSize:7.5,valign:'middle'}},{text:r.group||'–',options:{fill:{color:bg},align:'center',fontSize:7.5,color:'0369a1',valign:'middle'}},{text:r.desc||'–',options:{fill:{color:bg},align:'left',fontSize:7.5,valign:'middle'}},{text:r.risk||'–',options:{fill:{color:bg},align:'center',fontSize:7.5,bold:true,color:rCol,valign:'middle'}},{text:r.solDate?new Date(r.solDate).toLocaleDateString('en-AE',{day:'2-digit',month:'short'}):'–',options:{fill:{color:bg},align:'center',fontSize:7.5,valign:'middle'}},{text:r.status||'–',options:{fill:{color:bg},align:'center',fontSize:7.5,bold:true,color:stCol,valign:'middle'}}]);
+            const stCol=['done','resolved','closed','completed'].includes((r.status||'').toLowerCase())?GRN:'d97706';
+            llRows2.push([{text:r.project||'–',options:{fill:{color:bg},align:'left',fontSize:8,bold:true,valign:'middle'}},{text:r.date?new Date(r.date).toLocaleDateString('en-AE',{day:'2-digit',month:'short'}):'–',options:{fill:{color:bg},align:'center',fontSize:7.5,valign:'middle'}},{text:r.desc||'–',options:{fill:{color:bg},align:'left',fontSize:7.5,valign:'middle'}},{text:r.risk||'–',options:{fill:{color:bg},align:'center',fontSize:7.5,bold:true,color:rCol,valign:'middle'}},{text:r.solDate?new Date(r.solDate).toLocaleDateString('en-AE',{day:'2-digit',month:'short'}):'–',options:{fill:{color:bg},align:'center',fontSize:7.5,valign:'middle'}},{text:r.status||'–',options:{fill:{color:bg},align:'center',fontSize:7.5,bold:true,color:stCol,valign:'middle'}}]);
           });
         }
         sl.addTable(llRows2,{x:0.1,y:TBL_TOP+0.35,w:TBL_W*0.62,colW:llCW,rowH:0.26,border:{type:'solid',pt:0.5,color:'FECACA'},autoPage:true,autoPageRepeatHeader:true});
         // High Lights table
         sl.addText('High Lights',{x:TBL_W*0.64,y:TBL_TOP,w:3,h:0.3,fontSize:13,color:'15803d',bold:true,isTextBox:true});
         sl.addText(HIGHLIGHT_DATA.length+' Items',{x:TBL_W*0.64+3.1,y:TBL_TOP+0.04,w:2,h:0.24,fontSize:9,color:LGRY,isTextBox:true});
-        const hlCols=['Project','Date','Group','Description'];
-        const hlCW=[1.4,0.7,0.75,1.75]; // sum=4.60=TBL_W*0.35
+        const hlCols=['Project','Date','Description'];
+        const hlCW=[1.5,0.75,2.35]; // sum=4.60=TBL_W*0.35
         const hlRows2=[];
         hlRows2.push(hlCols.map(c=>({text:c,options:{bold:true,color:WHITE,fill:{color:'15803d'},align:'center',fontSize:7.5,valign:'middle'}})));
-        hlRows2[0][0].options.align='left'; hlRows2[0][3].options.align='left';
+        hlRows2[0][0].options.align='left'; hlRows2[0][2].options.align='left';
         if(HIGHLIGHT_DATA.length===0){
-          hlRows2.push([{text:'No highlights data',options:{color:LGRY,fontSize:9,colspan:4,align:'center',fill:{color:WHITE},valign:'middle'}}]);
+          hlRows2.push([{text:'No highlights data',options:{color:LGRY,fontSize:9,colspan:3,align:'center',fill:{color:WHITE},valign:'middle'}}]);
         } else {
           HIGHLIGHT_DATA.forEach((r,i)=>{
             const bg=i%2===0?'F0FDF4':WHITE;
-            hlRows2.push([{text:r.project||'–',options:{fill:{color:bg},align:'left',fontSize:8,bold:true,valign:'middle'}},{text:r.date?new Date(r.date).toLocaleDateString('en-AE',{day:'2-digit',month:'short'}):'–',options:{fill:{color:bg},align:'center',fontSize:7.5,valign:'middle'}},{text:r.group||'–',options:{fill:{color:bg},align:'center',fontSize:7.5,color:'0369a1',valign:'middle'}},{text:r.desc||'–',options:{fill:{color:bg},align:'left',fontSize:7.5,valign:'middle'}}]);
+            hlRows2.push([{text:r.project||'–',options:{fill:{color:bg},align:'left',fontSize:8,bold:true,valign:'middle'}},{text:r.date?new Date(r.date).toLocaleDateString('en-AE',{day:'2-digit',month:'short'}):'–',options:{fill:{color:bg},align:'center',fontSize:7.5,valign:'middle'}},{text:r.desc||'–',options:{fill:{color:bg},align:'left',fontSize:7.5,valign:'middle'}}]);
           });
         }
         sl.addTable(hlRows2,{x:0.1+TBL_W*0.64,y:TBL_TOP+0.35,w:TBL_W*0.35,colW:hlCW,rowH:0.26,border:{type:'solid',pt:0.5,color:'BBF7D0'},autoPage:true,autoPageRepeatHeader:true});
