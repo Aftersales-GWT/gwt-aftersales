@@ -283,6 +283,8 @@ let activeSlide = 's-dashboard';
 let activeGroup = 'AMC';
 let soGroup = 'all'; // Slide 3 group filter
 let soYear  = '2026'; // Slide 3 year filter
+let soMonth = 'all';  // Slide 3 month filter
+let soCumulative = false; // Slide 3 till-month mode
 let soChartsVisible = true; // Slide 3 charts visibility
 let oChallengesOnly = false; // Slide 6 challenges filter
 let rNotesOnly = false;      // Slide 5 notes filter
@@ -778,6 +780,7 @@ function buildToolbar(){
     return;
   }
   if(slide.toolbar==='salesov'){
+    const soTillActive = soMonth!=='all' && soCumulative;
     tb.innerHTML=`
       <span class="flbl">Year</span>
       <select class="fsel" id="soYear" onchange="soYear=this.value;buildToolbar();renderActive()">
@@ -788,6 +791,16 @@ function buildToolbar(){
         <option value="2025"${soYear==='2025'?' selected':''}>2025</option>
         <option value="2026"${soYear==='2026'?' selected':''}>2026</option>
       </select>
+      <div class="fdiv"></div>
+      <span class="flbl">Month</span>
+      <div style="display:flex;gap:3px;flex-wrap:wrap">${_monthBtns(soMonth,'soMonth')}</div>
+      <div class="fdiv"></div>
+      <button onclick="soCumulative=!soCumulative;buildToolbar();renderActive()"
+        title="${soMonth==='all'?'Select a specific month first to use Till Month':'Show data from Jan up to selected month'}"
+        style="background:${soTillActive?'#0891b2':'#fff'};color:${soTillActive?'#fff':'#0891b2'};border:2px solid #0891b2;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:${soMonth==='all'?'not-allowed':'pointer'};opacity:${soMonth==='all'?'0.4':'1'};white-space:nowrap"
+        ${soMonth==='all'?'disabled':''}>
+        ${soTillActive?'✓ Till Month':'↗ Till Month'}
+      </button>
       <div class="fdiv"></div>
       <span class="flbl">Group</span>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
@@ -802,11 +815,19 @@ function buildToolbar(){
           const bdr  = activeCol;
           const shadow = isActive ? 'box-shadow:0 0 0 3px '+activeCol+'55;' : '';
           const opacity = isActive ? 'opacity:1;' : 'opacity:0.82;';
+          const soTillActiveBtn = soMonth!=='all' && soCumulative;
+          const soMoNumBtn = soMonth==='all' ? null : parseInt(soMonth);
           const salesRows = SALES_DATA.filter(r=>{
+            if(r.status==='Cancelled') return false;
             const gn = r.group.replace('RR-Trade','Re-Routing').replace('RR-Retrofit','Retrofit');
             const grpMatch = isAll || gn===g || r.group===g;
             const yrMatch  = soYear==='all' || r.salesYear===parseInt(soYear);
-            return grpMatch && yrMatch;
+            let moMatch = true;
+            if(soMonth!=='all'){
+              const d = new Date(r.startDate);
+              moMatch = !isNaN(d) && (soTillActiveBtn ? (d.getMonth()+1)<=soMoNumBtn : (d.getMonth()+1)===soMoNumBtn);
+            }
+            return grpMatch && yrMatch && moMatch;
           });
           const cnt = salesRows.length>0 ? String(salesRows.length) : '';
           const bdgBg  = isActive ? 'rgba(255,255,255,0.22)' : '#e8eef6';
@@ -1118,6 +1139,18 @@ function renderSalesOverview(mc) {
   const fa2 = v => v>0 ? Number(v).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}) : '–';
   const fk2 = v => { if(!v||v===0) return '–'; if(v>=1000000) return 'AED '+(v/1000000).toFixed(2)+'M'; return 'AED '+(v/1000).toFixed(1)+'K'; };
 
+  // Month / Till-Month filter — when a specific month is selected, either match it
+  // exactly or (if soCumulative) include everything from Jan up to that month.
+  const soTillMode = soMonth!=='all' && soCumulative;
+  const soMoNum = soMonth==='all' ? null : parseInt(soMonth);
+  function monthOk(dateStr){
+    if(soMonth==='all') return true;
+    const d = new Date(dateStr);
+    if(isNaN(d)) return false;
+    const m = d.getMonth()+1;
+    return soTillMode ? m<=soMoNum : m===soMoNum;
+  }
+
   // ── 1. AGGREGATE per group ──
   const agg = {};
   GRPS.forEach(g => { agg[g] = {received:0, orderVal:0, invPlan:0, invRaised:0}; });
@@ -1126,6 +1159,7 @@ function renderSalesOverview(mc) {
     if(!agg[g] || r.status==='Cancelled') return;
     if(soYear!=='all' && String(r.salesYear)!==soYear) return;
     if(ACTIVE_GRP!=='all' && g!==ACTIVE_GRP) return;
+    if(!monthOk(r.startDate)) return;
     agg[g].received++;
     agg[g].orderVal += r.orderValTax||0;
   });
@@ -1136,12 +1170,12 @@ function renderSalesOverview(mc) {
     // invPlan: filter by Invoice Plan Date year (a 2024 contract can have 2026 planned invoices)
     if(r.invPlan) {
       const pYear = r.planDate ? String(new Date(r.planDate).getFullYear()) : null;
-      if(soYear==='all' || pYear===soYear) agg[g].invPlan += r.invPlan;
+      if((soYear==='all' || pYear===soYear) && monthOk(r.planDate)) agg[g].invPlan += r.invPlan;
     }
     // invRaised: filter by Invoice Date year (when the invoice was actually raised)
     if(r.iAmt) {
       const iYear = r.iDate ? String(new Date(r.iDate).getFullYear()) : null;
-      if(soYear==='all' || iYear===soYear) agg[g].invRaised += r.iAmt;
+      if((soYear==='all' || iYear===soYear) && monthOk(r.iDate)) agg[g].invRaised += r.iAmt;
     }
   });
 
@@ -1154,6 +1188,7 @@ function renderSalesOverview(mc) {
     if(ACTIVE_GRP!=='all' && gn!==ACTIVE_GRP) return;
     const yr = String(r.salesYear||0);
     if(soYear!=='all' && yr !== soYear) return;
+    if(!monthOk(r.startDate)) return;
     const d = new Date(r.startDate);
     if(isNaN(d)) return;
     const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
@@ -1174,6 +1209,7 @@ function renderSalesOverview(mc) {
     const gn = r.group.replace('RR-Trade','Re-Routing').replace('RR-Retrofit','Retrofit');
     if(!['AMC','O&M','Re-Routing','Retrofit','Service','Trading'].includes(gn)) return;
     if(ACTIVE_GRP!=='all' && gn!==ACTIVE_GRP) return;
+    if(!monthOk(r.startDate)) return;
     const yr = String(r.salesYear||0);
     if(!yoyData[yr]) return;
     yoyData[yr].count++;
@@ -1191,6 +1227,7 @@ function renderSalesOverview(mc) {
       const gn = r.group.replace('RR-Trade','Re-Routing').replace('RR-Retrofit','Retrofit');
       if(gn !== g || r.status==='Cancelled') return;
       if(soYear!=='all' && String(r.salesYear)!==soYear) return;
+      if(!monthOk(r.startDate)) return;
       if(!map[r.client]) map[r.client] = [];
       map[r.client].push(r);
     });
@@ -1440,7 +1477,9 @@ function renderSalesOverview(mc) {
     </svg>`;
   }
 
-  const yl = soYear==='all' ? 'All Years' : soYear;
+  const MNAMES_SO = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const moLabelSo = soMonth==='all' ? '' : (soTillMode ? ' (Jan–'+MNAMES_SO[soMoNum]+')' : ' ('+MNAMES_SO[soMoNum]+')');
+  const yl = (soYear==='all' ? 'All Years' : soYear) + moLabelSo;
   mc.innerHTML = `
     <!-- KPI CARDS -->
     <div class="kpi-grid">
@@ -1517,62 +1556,99 @@ function renderInvPay(mc){
 
   groups.forEach(g=>{
     const gd=INV_DATA.filter(r=>r.g===g);
-    const inPeriod=r=>{
+    // Invoice Raised: scoped by Invoice Date — invoices actually raised within the period
+    const inPeriodInv=r=>{
       if(!r.iDate) return false;
       const d=new Date(r.iDate);
       if(end&&d>end) return false;
       if(start&&d<start) return false;
       return true;
     };
-    const invRows=gd.filter(inPeriod);
+    // Payment Collected: scoped by Payment Date — cash actually received within the period,
+    // regardless of when the underlying invoice was raised (an old invoice can be paid this period)
+    const inPeriodPay=r=>{
+      if(!r.payDate||!(r.payRec>0)) return false;
+      const d=new Date(r.payDate);
+      if(end&&d>end) return false;
+      if(start&&d<start) return false;
+      return true;
+    };
+    const invRows=gd.filter(inPeriodInv);
+    const payRows=gd.filter(inPeriodPay);
     const invRaised=invRows.reduce((s,r)=>s+r.iAmt,0);
-    const payColl=invRows.reduce((s,r)=>s+r.payRec,0);
-    const balance=invRaised-payColl;
+    const payColl=payRows.reduce((s,r)=>s+r.payRec,0);
+    // Balance / Overdue: real-time outstanding snapshot (stock, not a period flow) —
+    // always reflects current debt across ALL invoices, independent of the period filter
+    const balance=gd.reduce((s,r)=>s+(r.iAmt-r.payRec),0);
     const dueRows=gd.filter(r=>r.status==='Overdue'&&r.payDue>0);
     const payDue=dueRows.reduce((s,r)=>s+r.payDue,0);
     const notDue=Math.max(0,balance-payDue);
-    agg[g]={invRaised,payColl,balance,payDue,notDue};
+    const allInvoiced=gd.reduce((s,r)=>s+r.iAmt,0); // all-time invoiced, for balance/overdue ratios
+    const allCollected=gd.reduce((s,r)=>s+r.payRec,0); // all-time collected, for the completion bar
+    agg[g]={invRaised,payColl,balance,payDue,notDue,allInvoiced,allCollected};
 
-    // Build per-client aggregation
+    // Build per-client aggregation — a client can appear because they were invoiced this
+    // period, paid this period, or currently carry an overdue balance (any/all can apply)
     const cmap={};
+    const ensure=cl=>{
+      if(!cmap[cl]) cmap[cl]={invRaised:0,payColl:0,payDue:0,creditDays:30,maxDaysOD:0,hasOverdue:false};
+      return cmap[cl];
+    };
     invRows.forEach(r=>{
       if(!r.cl) return;
-      if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0,creditDays:r.creditDays||30,maxDaysOD:0,hasOverdue:false};
-      cmap[r.cl].invRaised+=r.iAmt||0;
-      cmap[r.cl].payColl+=r.payRec||0;
-      if(r.creditDays) cmap[r.cl].creditDays=r.creditDays;
+      const c=ensure(r.cl);
+      c.invRaised+=r.iAmt||0;
+      if(r.creditDays) c.creditDays=r.creditDays;
+    });
+    payRows.forEach(r=>{
+      if(!r.cl) return;
+      const c=ensure(r.cl);
+      c.payColl+=r.payRec||0;
+      if(r.creditDays) c.creditDays=r.creditDays;
     });
     dueRows.forEach(r=>{
       if(!r.cl) return;
-      if(!cmap[r.cl]) cmap[r.cl]={invRaised:0,payColl:0,payDue:0,creditDays:r.creditDays||30,maxDaysOD:0,hasOverdue:false};
-      cmap[r.cl].payDue+=r.payDue||0;
-      cmap[r.cl].hasOverdue=true;
-      cmap[r.cl].maxDaysOD=Math.max(cmap[r.cl].maxDaysOD,r.daysOD||0);
-      if(r.creditDays) cmap[r.cl].creditDays=r.creditDays;
+      const c=ensure(r.cl);
+      c.payDue+=r.payDue||0;
+      c.hasOverdue=true;
+      c.maxDaysOD=Math.max(c.maxDaysOD,r.daysOD||0);
+      if(r.creditDays) c.creditDays=r.creditDays;
     });
-    Object.values(cmap).forEach(c=>{c.balance=c.invRaised-c.payColl;c.notDue=Math.max(0,c.balance-c.payDue);});
+    // Client balance & collection completion are also real-time snapshots across ALL of that client's invoices
+    const clBalance={}, clAllInv={}, clAllColl={};
+    gd.forEach(r=>{
+      if(!r.cl) return;
+      clBalance[r.cl]=(clBalance[r.cl]||0)+(r.iAmt-r.payRec);
+      clAllInv[r.cl]=(clAllInv[r.cl]||0)+(r.iAmt||0);
+      clAllColl[r.cl]=(clAllColl[r.cl]||0)+(r.payRec||0);
+    });
+    Object.keys(cmap).forEach(cl=>{
+      const c=cmap[cl];
+      c.balance=clBalance[cl]||0;
+      c.notDue=Math.max(0,c.balance-c.payDue);
+      c.allInvoiced=clAllInv[cl]||0;
+      c.allCollected=clAllColl[cl]||0;
+    });
     clientMap[g]=Object.entries(cmap).sort((a,b)=>b[1].invRaised-a[1].invRaised);
   });
 
-  const tot={invRaised:0,payColl:0,balance:0,payDue:0,notDue:0};
+  const tot={invRaised:0,payColl:0,balance:0,payDue:0,notDue:0,allInvoiced:0,allCollected:0};
   Object.values(agg).forEach(a=>Object.keys(tot).forEach(k=>tot[k]+=a[k]));
-
-  const collRate=tot.invRaised>0?((tot.payColl/tot.invRaised)*100).toFixed(1):'0.0';
 
   let rows='';
   groups.forEach((g,i)=>{
     if(!agg[g]) return;
     const a=agg[g];
     const clients=clientMap[g]||[];
-    const cp=a.invRaised>0?Math.min(100,(a.payColl/a.invRaised)*100):0;
     const rowBg=i%2===0?'#f0f5fb':'#ffffff';
+    const cp=a.allInvoiced>0?Math.min(100,(a.allCollected/a.allInvoiced)*100):0;
     rows+=`<tr class="ip-grp-hdr drow" style="font-size:12.5px;background:${rowBg};color:#1f2937;cursor:pointer" onclick="toggleIpGroup(this)">
       <td style="text-align:left;padding-left:14px;font-weight:700;color:#003366;font-size:12.5px">
         <span class="ip-arrow" style="font-size:10px;margin-right:6px;color:#003366">▶</span>${g}
         <span style="font-size:10px;color:#94a3b8;font-weight:400;margin-left:5px">${clients.length} client${clients.length!==1?'s':''}</span>
       </td>
       <td>${fa(a.invRaised)}</td>
-      <td><div class="prog-wrap">${fa(a.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${cp.toFixed(0)}%;background:#16a34a"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${cp.toFixed(0)}%</span></div></td>
+      <td><div class="prog-wrap" title="Collected to date vs. total invoiced to date">${fa(a.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${cp.toFixed(0)}%;background:#16a34a"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${cp.toFixed(0)}%</span></div></td>
       <td style="color:${a.balance<0?'#b91c1c':a.balance>0?'#1d4ed8':'#374151'};font-weight:600">${fa(a.balance)}</td>
       <td style="color:${a.payDue>0?'#b91c1c':'#374151'};font-weight:${a.payDue>0?'700':'400'}">${fa(a.payDue)}</td>
       <td style="color:${a.notDue>0?'#0369a1':'#374151'}">${a.notDue>0?fa(a.notDue):'–'}</td>
@@ -1581,7 +1657,7 @@ function renderInvPay(mc){
       <td style="text-align:center">–</td>
     </tr>`;
     clients.forEach(([cl,c])=>{
-      const ccp=c.invRaised>0?Math.min(100,(c.payColl/c.invRaised)*100):0;
+      const ccp=c.allInvoiced>0?Math.min(100,(c.allCollected/c.allInvoiced)*100):0;
       const statusTag=c.hasOverdue
         ?`<span style="background:#fee2e2;color:#b91c1c;border-radius:5px;padding:1px 8px;font-size:10px;font-weight:700">Overdue</span>`
         :c.balance>0
@@ -1590,7 +1666,7 @@ function renderInvPay(mc){
       rows+=`<tr class="ip-detail drow" style="display:none;background:#f8fafd">
         <td style="padding-left:32px;color:#374151;font-size:11.5px">↳ ${cl}</td>
         <td style="font-size:11px">${fa(c.invRaised)}</td>
-        <td><div class="prog-wrap" style="font-size:11px">${fa(c.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${ccp.toFixed(0)}%;background:#16a34a"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${ccp.toFixed(0)}%</span></div></td>
+        <td><div class="prog-wrap" style="font-size:11px" title="Collected to date vs. total invoiced to date">${fa(c.payColl)}<div class="prog-bar"><div class="prog-fill" style="width:${ccp.toFixed(0)}%;background:#16a34a"></div></div><span style="font-size:9px;color:#aaa;min-width:28px">${ccp.toFixed(0)}%</span></div></td>
         <td style="font-size:11px;color:${c.balance<0?'#b91c1c':c.balance>0?'#1d4ed8':'#374151'}">${fa(c.balance)}</td>
         <td style="font-size:11px;color:${c.payDue>0?'#b91c1c':'#6b7280'}">${c.payDue>0?fa(c.payDue):'–'}</td>
         <td style="font-size:11px;color:${c.notDue>0?'#0369a1':'#6b7280'}">${c.notDue>0?fa(c.notDue):'–'}</td>
@@ -1600,7 +1676,7 @@ function renderInvPay(mc){
       </tr>`;
     });
   });
-  const tp=tot.invRaised>0?Math.min(100,(tot.payColl/tot.invRaised)*100):0;
+  const tp=tot.allInvoiced>0?Math.min(100,(tot.allCollected/tot.allInvoiced)*100):0;
   rows+=`<tr class="tot">
     <td>TOTAL</td>
     <td>${fa(tot.invRaised)}</td>
@@ -1613,10 +1689,11 @@ function renderInvPay(mc){
 
   mc.innerHTML=`
     <div class="kpi-grid">
-      <div class="kpi kb"><div class="kpi-lbl">Total Invoice Raised</div><div class="kpi-val">${fk(tot.invRaised)}</div><div class="kpi-sub">Incl. Tax</div></div>
-      <div class="kpi kg"><div class="kpi-lbl">Payment Collected</div><div class="kpi-val">${fk(tot.payColl)}</div><div class="kpi-sub"><b style="color:#16a34a">${collRate}% of invoiced</b></div></div>
-      <div class="kpi ka"><div class="kpi-lbl">Balance to Collect</div><div class="kpi-val">${fk(tot.balance)}</div><div class="kpi-sub">Outstanding balance${tot.invRaised>0?` · <b style="color:#d97706">${((tot.balance/tot.invRaised)*100).toFixed(1)}% of invoiced</b>`:''}</div></div>
+      <div class="kpi kb"><div class="kpi-lbl">Invoice Raised</div><div class="kpi-val">${fk(tot.invRaised)}</div><div class="kpi-sub">Incl. Tax · raised in period</div></div>
+      <div class="kpi kg"><div class="kpi-lbl">Payment Collected</div><div class="kpi-val">${fk(tot.payColl)}</div><div class="kpi-sub">Cash received in period${tot.allInvoiced>0?` · <b style="color:#16a34a">${tp.toFixed(1)}% collected to date</b>`:''}</div></div>
+      <div class="kpi ka"><div class="kpi-lbl">Balance to Collect</div><div class="kpi-val">${fk(tot.balance)}</div><div class="kpi-sub">Outstanding balance · as of today${tot.allInvoiced>0?` · <b style="color:#d97706">${((tot.balance/tot.allInvoiced)*100).toFixed(1)}% of total invoiced</b>`:''}</div></div>
       <div class="kpi kr"><div class="kpi-lbl">Payment Overdue</div><div class="kpi-val">${fk(tot.payDue)}</div><div class="kpi-sub">Past credit terms${tot.balance>0?` · <b style="color:#dc2626">${((tot.payDue/tot.balance)*100).toFixed(1)}% of balance</b>`:''}</div></div>
+      <div class="kpi kp"><div class="kpi-lbl">Payment Not Due</div><div class="kpi-val">${fk(tot.notDue)}</div><div class="kpi-sub">Within credit period${tot.balance>0?` · <b style="color:#0369a1">${((tot.notDue/tot.balance)*100).toFixed(1)}% of balance</b>`:''}</div></div>
     </div>
     <div class="tcard">
       <div class="tcard-hdr">
@@ -1925,9 +2002,9 @@ function renderSiteReport(mc){
     hl.forEach((r,i)=>{
       const bg=i%2===0?'#f0fdf4':'#fff';
       hlRows+=`<tr style="background:${bg};border-bottom:1px solid #bbf7d0">
-        <td style="padding:7px 10px;font-weight:600;color:#1f2937;font-size:11.5px">${r.project||'–'}</td>
-        <td style="font-size:11px;color:#64748b;white-space:nowrap">${fd2(r.date)}</td>
-        <td style="font-size:11px;color:#374151">${r.desc||'–'}</td>
+        <td style="padding:7px 14px;font-weight:600;color:#1f2937;font-size:11.5px;min-width:150px">${r.project||'–'}</td>
+        <td style="padding:7px 14px;font-size:11px;color:#64748b;white-space:nowrap">${fd2(r.date)}</td>
+        <td style="padding:7px 14px;font-size:11px;color:#374151">${r.desc||'–'}</td>
       </tr>`;
     });
   }
@@ -1949,13 +2026,13 @@ function renderSiteReport(mc){
           </div>
         </div>
         <div class="twrap"><table>
-          <thead><tr style="background:#fff5f5">
-            <th style="text-align:left">Project</th>
-            <th style="white-space:nowrap">Date</th>
-            <th style="text-align:left;min-width:140px">Description</th>
-            <th>Risk</th>
-            <th style="white-space:nowrap">Solution Date</th>
-            <th>Status</th>
+          <thead><tr style="background:#7f1d1d">
+            <th style="text-align:left;color:#fff">Project</th>
+            <th style="white-space:nowrap;color:#fff">Date</th>
+            <th style="text-align:left;min-width:140px;color:#fff">Description</th>
+            <th style="color:#fff">Risk</th>
+            <th style="white-space:nowrap;color:#fff">Solution Date</th>
+            <th style="color:#fff">Status</th>
           </tr></thead>
           <tbody>${llRows}</tbody>
         </table></div>
@@ -1966,10 +2043,10 @@ function renderSiteReport(mc){
           <span style="background:#dcfce7;color:#15803d;border-radius:8px;padding:2px 10px;font-size:10.5px;font-weight:700">${hl.length} Items</span>
         </div>
         <div class="twrap"><table>
-          <thead><tr style="background:#f0fdf4">
-            <th style="text-align:left">Project</th>
-            <th style="white-space:nowrap">Date</th>
-            <th style="text-align:left;min-width:160px">Description</th>
+          <thead><tr style="background:#14532d">
+            <th style="text-align:left;color:#fff;padding-left:14px;min-width:150px">Project</th>
+            <th style="white-space:nowrap;color:#fff;padding:9px 14px">Date</th>
+            <th style="text-align:left;min-width:160px;color:#fff;padding:9px 14px">Description</th>
           </tr></thead>
           <tbody>${hlRows}</tbody>
         </table></div>
