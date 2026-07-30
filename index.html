@@ -93,6 +93,16 @@ tr.drow{border-bottom:1px solid #f5f7fa}
 tr.drow:hover{background:#f8fafc}
 tr.drow td{padding:7px 11px;color:#1f2937;text-align:right}
 tr.drow td:first-child{text-align:left;padding-left:26px;color:#9ca3af}
+.gwt-pop-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:16px}
+.gwt-pop-table thead tr{background:#003366}
+.gwt-pop-table thead th{color:#fff;padding:7px 10px;text-align:left;font-weight:600;font-size:10.5px;white-space:nowrap}
+.gwt-pop-table thead th.r{text-align:right}
+.gwt-pop-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
+.gwt-pop-table tbody tr:hover{background:#f0f6ff}
+.gwt-pop-table tbody td{padding:7px 10px;color:#374151;vertical-align:middle}
+.gwt-pop-table tbody td.r{text-align:right;font-family:'Courier New',monospace;font-weight:600}
+.gwt-pop-table tfoot td{padding:8px 10px;font-weight:800;color:#1e3a5f;background:#dbeafe;font-size:12px;border-top:2px solid #93c5fd}
+.gwt-pop-table tfoot td.r{text-align:right;font-family:'Courier New',monospace}
 .cn-cell{color:#374151;font-size:10.5px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;cursor:pointer}
 td.cn-open .cn-cell{-webkit-line-clamp:unset;line-clamp:unset;display:block}
 td[onclick].cn-open{background:#f8fafc}
@@ -277,6 +287,7 @@ const SLIDES = [
   {id:'s-late',     label:'Slide 8 – Late Payers',             toolbar:'late',       subnav:false},
   {id:'s-inv-plan', label:'Slide 9 – Invoice Plan vs Actual',  toolbar:'invplan',    subnav:false},
   {id:'s-pay-tgt',  label:'Slide 10 – Payment Target vs Actual',toolbar:'paytgt',   subnav:false},
+  {id:'s-action',   label:'Slide 11 – Action Centre',           toolbar:'none',     subnav:false},
 ];
 
 let activeSlide = 's-dashboard';
@@ -293,6 +304,16 @@ let ipYear='all',ipMonth='all',ipGroup='all'; // Slide 9
 let ipChartVisible=true,ipCumulative=false;
 let ptYear='all',ptMonth='all',ptGroup='all'; // Slide 9
 let ptChartVisible=true,ptCumulative=false;
+
+// Slide 11 — Action Centre filter state, persists across tab switches
+const _AC = {
+  tab: 0,
+  f: [
+    { year:'all', month:'all', status:'open', grp:'both' },  // Contract Renewals
+    { year:'all', month:'all', status:'open' },               // Upcoming Invoices
+    { year:'all', month:'all', status:'open' },               // Upcoming Payments
+  ]
+};
 
 /* ── DATA ── */
 
@@ -1031,6 +1052,7 @@ function renderActive(){
   else if(activeSlide==='s-late')   { renderLate(mc); }
   else if(activeSlide==='s-inv-plan') { renderInvPlan(mc); }
   else if(activeSlide==='s-pay-tgt')  { renderPayTarget(mc); }
+  else if(activeSlide==='s-action')   { renderActionCentre(mc); }
 }
 
 /* ── SLIDE 1: COVER ── */
@@ -3755,6 +3777,397 @@ function toggleAllPTGroups(){
   });
   const btn=document.getElementById('pt-unfold-btn');
   if(btn)btn.textContent=_ptAllOpen?'▼ Fold All':'▶ Unfold All';
+}
+
+/* ══════════════════════════════════════════
+   SLIDE 11: ACTION CENTRE — 3-TAB VIEW
+   Tab 0: Contract Renewals · Tab 1: Upcoming Invoices · Tab 2: Upcoming Payments
+══════════════════════════════════════════ */
+function _acFmt(v){if(!v&&v!==0)return '–';if(v>=1000000)return 'AED '+(v/1000000).toFixed(2)+'M';if(v>=1000)return 'AED '+(v/1000).toFixed(1)+'K';return 'AED '+Math.round(v).toLocaleString();}
+function _acDate(d){if(!d)return '–';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
+function _acEmpty(title, sub){
+  return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;color:#94a3b8;text-align:center;gap:8px">
+    <div style="font-size:36px">📭</div>
+    <div style="font-size:13px;font-weight:600;color:#64748b">${title}</div>
+    <div style="font-size:11px">${sub}</div>
+  </div>`;
+}
+
+function _acSetTab(i){
+  _AC.tab = i;
+  renderActionCentre(document.getElementById('mainContent'));
+}
+function _acSetF(key, val){
+  _AC.f[_AC.tab][key] = val;
+  renderActionCentre(document.getElementById('mainContent'));
+}
+
+/* ── TAB 0: CONTRACT RENEWALS ── */
+function _acRenewalsBody(){
+  const f = _AC.f[0];
+  const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+  const CLOSED = ['Closed','Cancelled','Renewed','Completed'];
+
+  let rows = SALES_DATA.filter(r=>{
+    const grpOK = f.grp==='both'?(r.group==='AMC'||r.group==='O&M'):r.group===f.grp;
+    if(!grpOK) return false;
+    const isClosed = CLOSED.includes(r.status);
+    if(f.status==='open'   &&  isClosed) return false;
+    if(f.status==='closed' && !isClosed) return false;
+    if(f.year!=='all' && r.endDate){
+      if(r.endDate.split('-')[0]!==f.year) return false;
+    }
+    if(f.month!=='all' && r.endDate){
+      if(parseInt(r.endDate.split('-')[1])!==parseInt(f.month)) return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    if(!a.endDate) return 1; if(!b.endDate) return -1;
+    return new Date(a.endDate)-new Date(b.endDate);
+  });
+
+  if(!rows.length) return _acEmpty('No contracts match the current filter','Try changing the Year, Month, Status or Group filter.');
+
+  const totVal = rows.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0);
+
+  function days(d){ return d?Math.round((new Date(d)-TODAY)/(864e5)):null; }
+  function urgBadge(d){
+    const n=days(d);
+    if(n===null) return '<span style="color:#94a3b8;font-size:10px">—</span>';
+    if(n<0)  return `<span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">Expired ${Math.abs(n)}d ago</span>`;
+    if(n<=30)return `<span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">⚠ ${n}d left</span>`;
+    if(n<=90)return `<span style="background:#fff7ed;color:#9a3412;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${n}d left</span>`;
+    return `<span style="background:#fefce8;color:#854d0e;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${n}d left</span>`;
+  }
+  function grpBadge(g){ const c=g==='AMC'?'#005599':'#0891b2'; return `<span style="background:${c}20;color:${c};padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${g}</span>`; }
+  function stsBadge(s){ const ok=s==='Closed'||s==='Renewed';return `<span style="background:${ok?'#dcfce7':'#fff7ed'};color:${ok?'#166534':'#9a3412'};padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${s||'—'}</span>`; }
+
+  return `<div style="padding:12px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;color:#374151">${rows.length} contract${rows.length!==1?'s':''} &nbsp;·&nbsp; Total Value: <strong style="color:#003366">${_acFmt(totVal)}</strong></span>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="gwt-pop-table">
+      <thead><tr>
+        <th>Client</th><th>Project</th><th style="text-align:center">Group</th>
+        <th>Start Date</th><th>End Date</th><th style="text-align:center">Urgency</th>
+        <th class="r">Value</th><th style="text-align:center">Status</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r=>{
+        const d=days(r.endDate);
+        const rowBg=d!==null&&d<0?'#fff5f5':d!==null&&d<=30?'#fffbf0':'';
+        return `<tr style="${rowBg?'background:'+rowBg+';':''}">
+          <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.client}">${r.client||'—'}</td>
+          <td style="color:#64748b;font-size:10.5px">${r.proj||'—'}</td>
+          <td style="text-align:center">${grpBadge(r.group)}</td>
+          <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.startDate)}</td>
+          <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.endDate)}</td>
+          <td style="text-align:center">${urgBadge(r.endDate)}</td>
+          <td class="r">${_acFmt(r.orderValTax||r.orderVal)}</td>
+          <td style="text-align:center">${stsBadge(r.status)}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="6" style="background:#f0f4ff;padding:7px 10px;font-weight:800;color:#1e3a5f;border-top:2px solid #93c5fd">TOTAL — ${rows.length} contracts</td>
+        <td class="r" style="background:#f0f4ff;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#003366;border-top:2px solid #93c5fd">${_acFmt(totVal)}</td>
+        <td style="background:#f0f4ff;border-top:2px solid #93c5fd"></td>
+      </tr></tfoot>
+    </table></div>
+    <p style="font-size:10px;color:#94a3b8;margin-top:8px">ℹ️ Set Status to <em>Closed</em> or <em>Renewed</em> in the sheet to remove a contract from the Open list.</p>
+  </div>`;
+}
+
+/* ── TAB 1: UPCOMING INVOICES ── */
+function _acInvoicesBody(){
+  const f = _AC.f[1];
+
+  let rows = INV_DATA.filter(r=>{
+    if(f.status==='open'   && r.iAmt>0)  return false;   // open = not yet invoiced
+    if(f.status==='closed' && r.iAmt===0) return false;  // closed = invoiced
+    if(r.invPlan===0 && r.iAmt===0) return false;        // skip empty rows
+    const dt = r.invPlanDate || r.iDate;
+    if(f.year!=='all' && dt){
+      if(dt.split('-')[0]!==f.year) return false;
+    }
+    if(f.month!=='all' && dt){
+      if(parseInt(dt.split('-')[1])!==parseInt(f.month)) return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    const da=a.invPlanDate||'9999', db2=b.invPlanDate||'9999';
+    return da>db2?1:da<db2?-1:0;
+  });
+
+  if(!rows.length) return _acEmpty('No invoice items match the current filter','Try changing the Year, Month or Status filter.');
+
+  const totPlan = rows.reduce((s,r)=>s+r.invPlan,0);
+  const totAct  = rows.reduce((s,r)=>s+r.iAmt,0);
+  const totGap  = rows.reduce((s,r)=>s+Math.max(0,r.invPlan-r.iAmt),0);
+
+  function stsBadge(r){
+    if(r.iAmt>0 && r.iAmt>=r.invPlan) return '<span style="background:#dcfce7;color:#166534;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">✓ Invoiced</span>';
+    if(r.iAmt>0) return '<span style="background:#fef9c3;color:#92400e;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">Partial</span>';
+    const dt=r.invPlanDate; const TODAY=new Date().toISOString().slice(0,10);
+    if(dt && dt<TODAY) return '<span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">Overdue</span>';
+    return '<span style="background:#fff7ed;color:#9a3412;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">Pending</span>';
+  }
+
+  return `<div style="padding:12px 16px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      ${[['Planned',totPlan,'#dbeafe','#1e40af'],['Invoiced',totAct,'#dcfce7','#166534'],['Gap / Pending',totGap,'#fee2e2','#991b1b']].map(([l,v,bg,col])=>`
+        <div style="background:${bg};border-radius:8px;padding:8px 14px;min-width:120px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${col};opacity:.8">${l}</div>
+          <div style="font-size:14px;font-weight:800;color:${col};font-family:'Courier New',monospace">${_acFmt(v)}</div>
+        </div>`).join('')}
+      <div style="background:#f1f5f9;border-radius:8px;padding:8px 14px;min-width:80px;text-align:center">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Count</div>
+        <div style="font-size:14px;font-weight:800;color:#374151">${rows.length}</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="gwt-pop-table">
+      <thead><tr>
+        <th>Client</th><th>Group</th><th>Invoice #</th>
+        <th>Planned Inv. Date</th><th class="r">Plan Amount</th>
+        <th>Invoice Date</th><th class="r">Invoiced</th>
+        <th class="r">Gap</th><th style="text-align:center">Status</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r=>`<tr>
+        <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.cl}">${r.cl||'—'}</td>
+        <td><span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">${r.g}</span></td>
+        <td style="color:#64748b;font-size:10.5px">${r.inv||'—'}</td>
+        <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.invPlanDate)}</td>
+        <td class="r">${_acFmt(r.invPlan)}</td>
+        <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.iDate)}</td>
+        <td class="r" style="color:#16a34a">${r.iAmt>0?_acFmt(r.iAmt):'—'}</td>
+        <td class="r" style="color:${r.invPlan-r.iAmt>0?'#dc2626':'#16a34a'};font-weight:700">${r.invPlan>r.iAmt?_acFmt(r.invPlan-r.iAmt):'—'}</td>
+        <td style="text-align:center">${stsBadge(r)}</td>
+      </tr>`).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="4" style="background:#dbeafe;padding:7px 10px;font-weight:800;color:#1e3a5f;border-top:2px solid #93c5fd">TOTAL</td>
+        <td class="r" style="background:#dbeafe;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#1e40af;border-top:2px solid #93c5fd">${_acFmt(totPlan)}</td>
+        <td style="background:#dbeafe;border-top:2px solid #93c5fd"></td>
+        <td class="r" style="background:#dbeafe;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#166534;border-top:2px solid #93c5fd">${_acFmt(totAct)}</td>
+        <td class="r" style="background:#dbeafe;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#dc2626;border-top:2px solid #93c5fd">${_acFmt(totGap)}</td>
+        <td style="background:#dbeafe;border-top:2px solid #93c5fd"></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+/* ── TAB 2: UPCOMING PAYMENTS ── */
+function _acPaymentsBody(){
+  const f = _AC.f[2];
+  const TODAY = new Date().toISOString().slice(0,10);
+
+  let rows = INV_DATA.filter(r=>{
+    if(r.iAmt===0) return false;                          // must be invoiced
+    if(f.status==='open'   && r.payDue<=0) return false;  // open = outstanding
+    if(f.status==='closed' && r.payDue>0)  return false;  // closed = collected
+    const dt = r.payDueDate || r.iDate;
+    if(f.year!=='all' && dt){
+      if(dt.split('-')[0]!==f.year) return false;
+    }
+    if(f.month!=='all' && dt){
+      if(parseInt(dt.split('-')[1])!==parseInt(f.month)) return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    if(a.payDue>0 && b.payDue>0) return (b.daysOD||0)-(a.daysOD||0); // overdue first
+    const da=a.payDueDate||'9999', db2=b.payDueDate||'9999';
+    return da>db2?1:da<db2?-1:0;
+  });
+
+  if(!rows.length) return _acEmpty('No payment items match the current filter','Try changing the Year, Month or Status filter.');
+
+  const totInv = rows.reduce((s,r)=>s+r.iAmt,0);
+  const totRec = rows.reduce((s,r)=>s+r.payRec,0);
+  const totOut = rows.reduce((s,r)=>s+r.payDue,0);
+
+  function ageBadge(r){
+    if(r.payDue<=0) return '<span style="background:#dcfce7;color:#166534;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">✓ Collected</span>';
+    const d=r.daysOD||0;
+    if(d>90) return `<span style="background:#fdf4ff;color:#701a75;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${d}d OD</span>`;
+    if(d>60) return `<span style="background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${d}d OD</span>`;
+    if(d>30) return `<span style="background:#fff7ed;color:#9a3412;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${d}d OD</span>`;
+    if(d>0)  return `<span style="background:#fefce8;color:#854d0e;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">${d}d OD</span>`;
+    if(r.payDueDate && r.payDueDate<=TODAY) return '<span style="background:#fff7ed;color:#9a3412;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">Due Today</span>';
+    return '<span style="background:#f1f5f9;color:#374151;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">Upcoming</span>';
+  }
+
+  return `<div style="padding:12px 16px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      ${[['Invoice Total',totInv,'#dbeafe','#1e40af'],['Collected',totRec,'#dcfce7','#166534'],['Outstanding',totOut,'#fee2e2','#991b1b']].map(([l,v,bg,col])=>`
+        <div style="background:${bg};border-radius:8px;padding:8px 14px;min-width:120px">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${col};opacity:.8">${l}</div>
+          <div style="font-size:14px;font-weight:800;color:${col};font-family:'Courier New',monospace">${_acFmt(v)}</div>
+        </div>`).join('')}
+      <div style="background:#f1f5f9;border-radius:8px;padding:8px 14px;min-width:80px;text-align:center">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#64748b">Count</div>
+        <div style="font-size:14px;font-weight:800;color:#374151">${rows.length}</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="gwt-pop-table">
+      <thead><tr>
+        <th>Client</th><th>Group</th><th>Invoice #</th>
+        <th>Invoice Date</th><th>Due Date</th>
+        <th class="r">Invoice Amt</th><th class="r">Collected</th>
+        <th class="r">Outstanding</th><th style="text-align:center">Age / Status</th>
+      </tr></thead>
+      <tbody>
+      ${rows.map(r=>`<tr style="${r.payDue>0&&(r.daysOD||0)>30?'background:#fff5f5':''}">
+        <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.cl}">${r.cl||'—'}</td>
+        <td><span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">${r.g}</span></td>
+        <td style="color:#64748b;font-size:10.5px">${r.inv||'—'}</td>
+        <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.iDate)}</td>
+        <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.payDueDate)}</td>
+        <td class="r">${_acFmt(r.iAmt)}</td>
+        <td class="r" style="color:#16a34a">${r.payRec>0?_acFmt(r.payRec):'—'}</td>
+        <td class="r" style="color:${r.payDue>0?'#dc2626':'#16a34a'};font-weight:700">${r.payDue>0?_acFmt(r.payDue):'—'}</td>
+        <td style="text-align:center">${ageBadge(r)}</td>
+      </tr>`).join('')}
+      </tbody>
+      <tfoot><tr>
+        <td colspan="5" style="background:#fee2e2;padding:7px 10px;font-weight:800;color:#1e3a5f;border-top:2px solid #fca5a5">TOTAL</td>
+        <td class="r" style="background:#fee2e2;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#1e40af;border-top:2px solid #fca5a5">${_acFmt(totInv)}</td>
+        <td class="r" style="background:#fee2e2;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#166534;border-top:2px solid #fca5a5">${_acFmt(totRec)}</td>
+        <td class="r" style="background:#fee2e2;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#dc2626;border-top:2px solid #fca5a5">${_acFmt(totOut)}</td>
+        <td style="background:#fee2e2;border-top:2px solid #fca5a5"></td>
+      </tr></tfoot>
+    </table></div>
+  </div>`;
+}
+
+/* ── MAIN RENDER: 3-tab shell + filter bar ── */
+function renderActionCentre(mc){
+  const TAB_CFG=[
+    {icon:'🔄', label:'Contract Renewals', color:'#7c3aed', light:'#f5f3ff', border:'#c4b5fd'},
+    {icon:'📋', label:'Upcoming Invoices',  color:'#0057a0', light:'#eff6ff', border:'#93c5fd'},
+    {icon:'💰', label:'Upcoming Payments',  color:'#dc2626', light:'#fff1f2', border:'#fca5a5'},
+  ];
+  const t  = _AC.tab;
+  const f  = _AC.f[t];
+  const TC = TAB_CFG[t];
+
+  function yearsFrom(arr, dateKey){
+    const ys = new Set();
+    arr.forEach(r=>{ const d=r[dateKey]; if(d) ys.add(d.split('-')[0]); });
+    return [...ys].sort().reverse();
+  }
+  const YRS = t===0
+    ? yearsFrom(SALES_DATA,'endDate')
+    : t===1
+      ? yearsFrom(INV_DATA,'invPlanDate')
+      : yearsFrom(INV_DATA,'payDueDate');
+
+  const yearBtns = ['all',...YRS].map(y=>{
+    const on = f.year===y;
+    return `<button onclick="_acSetF('year','${y}')"
+      style="background:${on?TC.color:'#f8fafc'};color:${on?'#fff':TC.color};
+             border:2px solid ${on?TC.color:TC.border};border-radius:8px;
+             padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap"
+      >${y==='all'?'All Years':y}</button>`;
+  }).join('');
+
+  const MN=['All','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthBtns = MN.map((m,i)=>{
+    const v=i===0?'all':String(i);
+    const on=f.month===v;
+    return `<button onclick="_acSetF('month','${v}')"
+      style="background:${on?TC.color:'#f8fafc'};color:${on?'#fff':'#374151'};
+             border:none;border-radius:6px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer"
+      >${m}</button>`;
+  }).join('');
+
+  const statusOpts = t===0
+    ? [{v:'open',l:'Pending',col:'#d97706'},{v:'closed',l:'Renewed',col:'#16a34a'},{v:'all',l:'All',col:'#64748b'}]
+    : [{v:'open',l:'Open',col:'#d97706'},{v:'closed',l:'Closed',col:'#16a34a'},{v:'all',l:'All',col:'#64748b'}];
+  const statusBtns = statusOpts.map(s=>{
+    const on=f.status===s.v;
+    return `<button onclick="_acSetF('status','${s.v}')"
+      style="background:${on?s.col:'#f8fafc'};color:${on?'#fff':s.col};
+             border:2px solid ${s.col};border-radius:16px;
+             padding:4px 14px;font-size:11px;font-weight:700;cursor:pointer"
+      >${s.l}</button>`;
+  }).join('');
+
+  const grpBar = t===0 ? `
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
+      ${[{v:'both',l:'All'},{v:'AMC',l:'AMC'},{v:'O&M',l:'O&M'}].map(g=>{
+        const on=f.grp===g.v;
+        const col=g.v==='AMC'?'#005599':g.v==='O&M'?'#0891b2':'#7c3aed';
+        return `<button onclick="_acSetF('grp','${g.v}')"
+          style="background:${on?col:'#f8fafc'};color:${on?'#fff':col};
+                 border:2px solid ${col};border-radius:8px;
+                 padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer"
+          >${g.l}</button>`;
+      }).join('')}
+    </div>
+    <div style="width:1px;height:30px;background:#e2e8f0;margin:0 4px"></div>` : '';
+
+  let bodyHtml = '';
+  if(t===0) bodyHtml = _acRenewalsBody();
+  if(t===1) bodyHtml = _acInvoicesBody();
+  if(t===2) bodyHtml = _acPaymentsBody();
+
+  mc.innerHTML=`
+  <div style="padding:14px 18px 10px;height:100%;display:flex;flex-direction:column;box-sizing:border-box;gap:0">
+
+    <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
+      <div style="width:6px;height:40px;background:linear-gradient(180deg,${TC.color},${TC.color}99);border-radius:4px;margin-right:12px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px;line-height:1.1">⚡ Action Centre</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:1px">Contract renewals · Invoices · Payments</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:10px">
+      ${TAB_CFG.map((tb,i)=>{
+        const on=_AC.tab===i;
+        return `<button onclick="_acSetTab(${i})"
+          style="display:flex;align-items:center;gap:6px;
+                 background:${on?tb.color:tb.light};
+                 color:${on?'#fff':tb.color};
+                 border:2px solid ${on?tb.color:tb.border};
+                 border-bottom:${on?'2px solid '+tb.color:'2px solid transparent'};
+                 border-radius:8px 8px 0 0;
+                 padding:8px 18px;font-size:12px;font-weight:700;
+                 cursor:pointer;white-space:nowrap;margin-bottom:-2px;
+                 box-shadow:${on?'0 -2px 8px '+tb.color+'22':''};
+                 transition:all .15s"
+          >${tb.icon} ${tb.label}</button>`;
+      }).join('')}
+    </div>
+
+    <div style="background:${TC.light};border:1.5px solid ${TC.border};border-radius:10px;padding:10px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      ${grpBar}
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Year</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${yearBtns}</div>
+      </div>
+      <div style="width:1px;height:30px;background:#e2e8f0;flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Month</span>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">${monthBtns}</div>
+      </div>
+      <div style="width:1px;height:30px;background:#e2e8f0;flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Status</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${statusBtns}</div>
+      </div>
+    </div>
+
+    <div id="slPopupBody" style="flex:1;overflow-y:auto;border:1.5px solid ${TC.border};border-radius:10px;background:#fff;min-height:0">
+      ${bodyHtml}
+    </div>
+
+  </div>`;
 }
 
 // Fetch live data from Google Sheets
