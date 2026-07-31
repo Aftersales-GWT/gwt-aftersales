@@ -309,9 +309,9 @@ let ptChartVisible=true,ptCumulative=false;
 const _AC = {
   tab: 0,
   f: [
-    { year:'all', month:'all', status:'open', grp:'both' },  // Contract Renewals
-    { year:'all', month:'all', status:'open' },               // Upcoming Invoices
-    { year:'all', month:'all', status:'open' },               // Upcoming Payments
+    { year:'all', month:'all', status:'open', grp:'both', range:'all' },  // Contract Renewals
+    { year:'all', month:'all', status:'open', range:'all' },               // Upcoming Invoices
+    { year:'all', month:'all', status:'open', range:'all' },               // Upcoming Payments
   ]
 };
 
@@ -3793,12 +3793,42 @@ function _acEmpty(title, sub){
   </div>`;
 }
 
+// Quick "days from today" range presets — shared by all 3 Action Centre tabs
+const _AC_RANGES = [
+  {v:'all',     l:'All Time'},
+  {v:'overdue', l:'Overdue'},
+  {v:'30',      l:'Next 30 Days'},
+  {v:'90',      l:'Next 3 Months'},
+  {v:'180',     l:'Next 6 Months'},
+  {v:'365',     l:'Next 12 Months'},
+];
+// days = Math.round((targetDate - today) / 1 day). Positive = future, negative = past.
+function _acDaysUntil(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr);
+  if(isNaN(d)) return null;
+  const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+  return Math.round((d-TODAY)/864e5);
+}
+function _acInRange(dateStr, rangeVal){
+  if(rangeVal==='all') return true;
+  const days = _acDaysUntil(dateStr);
+  if(days===null) return false;
+  if(rangeVal==='overdue') return days<0;
+  return days>=0 && days<=parseInt(rangeVal);
+}
+
 function _acSetTab(i){
   _AC.tab = i;
   renderActionCentre(document.getElementById('mainContent'));
 }
 function _acSetF(key, val){
-  _AC.f[_AC.tab][key] = val;
+  const f = _AC.f[_AC.tab];
+  f[key] = val;
+  // Range and Year/Month are mutually exclusive ways of narrowing by date —
+  // picking one clears the other so the filter bar never shows two contradictory active filters
+  if(key==='range' && val!=='all'){ f.year='all'; f.month='all'; }
+  if((key==='year'||key==='month') && val!=='all'){ f.range='all'; }
   renderActionCentre(document.getElementById('mainContent'));
 }
 
@@ -3820,6 +3850,7 @@ function _acRenewalsBody(){
     if(f.month!=='all' && r.endDate){
       if(parseInt(r.endDate.split('-')[1])!==parseInt(f.month)) return false;
     }
+    if(!_acInRange(r.endDate, f.range)) return false;
     return true;
   }).sort((a,b)=>{
     if(!a.endDate) return 1; if(!b.endDate) return -1;
@@ -3894,6 +3925,7 @@ function _acInvoicesBody(){
     if(f.month!=='all' && dt){
       if(parseInt(dt.split('-')[1])!==parseInt(f.month)) return false;
     }
+    if(!_acInRange(dt, f.range)) return false;
     return true;
   }).sort((a,b)=>{
     const da=a.invPlanDate||'9999', db2=b.invPlanDate||'9999';
@@ -3975,6 +4007,7 @@ function _acPaymentsBody(){
     if(f.month!=='all' && dt){
       if(parseInt(dt.split('-')[1])!==parseInt(f.month)) return false;
     }
+    if(!_acInRange(dt, f.range)) return false;
     return true;
   }).sort((a,b)=>{
     if(a.payDue>0 && b.payDue>0) return (b.daysOD||0)-(a.daysOD||0); // overdue first
@@ -4096,6 +4129,15 @@ function renderActionCentre(mc){
       >${s.l}</button>`;
   }).join('');
 
+  const rangeBtns = _AC_RANGES.map(rg=>{
+    const on = f.range===rg.v;
+    return `<button onclick="_acSetF('range','${rg.v}')"
+      style="background:${on?TC.color:'#f8fafc'};color:${on?'#fff':TC.color};
+             border:2px solid ${on?TC.color:TC.border};border-radius:16px;
+             padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap"
+      >${rg.l}</button>`;
+  }).join('');
+
   const grpBar = t===0 ? `
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
@@ -4147,6 +4189,11 @@ function renderActionCentre(mc){
 
     <div style="background:${TC.light};border:1.5px solid ${TC.border};border-radius:10px;padding:10px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       ${grpBar}
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Range</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${rangeBtns}</div>
+      </div>
+      <div style="width:1px;height:30px;background:#e2e8f0;flex-shrink:0"></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Year</span>
         <div style="display:flex;gap:4px;flex-wrap:wrap">${yearBtns}</div>
