@@ -3876,10 +3876,11 @@ function _acRenewalsBody(){
     const isClosed = CLOSED.includes(r.status);
     if(f.status==='open'   &&  isClosed) return false;
     if(f.status==='closed' && !isClosed) return false;
-    if(f.year!=='all' && r.endDate){
-      if(r.endDate.split('-')[0]!==f.year) return false;
+    if(f.year!=='all'){
+      if(!r.endDate || r.endDate.split('-')[0]!==f.year) return false;
     }
-    if(f.month!=='all' && r.endDate){
+    if(f.month!=='all'){
+      if(!r.endDate) return false; // no end date — can't belong to a specific month
       const m = parseInt(r.endDate.split('-')[1]);
       if(tillMode ? m>moNum : m!==moNum) return false;
     }
@@ -3974,10 +3975,11 @@ function _acInvoicesBody(){
     if(f.status==='closed' && r.iAmt===0) return false;  // closed = invoiced
     if(r.invPlan===0 && r.iAmt===0) return false;        // skip empty rows
     const dt = r.invPlanDate || r.iDate;
-    if(f.year!=='all' && dt){
-      if(dt.split('-')[0]!==f.year) return false;
+    if(f.year!=='all'){
+      if(!dt || dt.split('-')[0]!==f.year) return false;
     }
-    if(f.month!=='all' && dt){
+    if(f.month!=='all'){
+      if(!dt) return false; // no plan/invoice date — can't belong to a specific month
       const m = parseInt(dt.split('-')[1]);
       if(tillMode ? m>moNum : m!==moNum) return false;
     }
@@ -4084,10 +4086,11 @@ function _acPaymentsBody(){
     if(f.status==='open'   && r.payDue<=0) return false;  // open = outstanding
     if(f.status==='closed' && r.payDue>0)  return false;  // closed = collected
     const dt = r.payDueDate || r.iDate;
-    if(f.year!=='all' && dt){
-      if(dt.split('-')[0]!==f.year) return false;
+    if(f.year!=='all'){
+      if(!dt || dt.split('-')[0]!==f.year) return false;
     }
-    if(f.month!=='all' && dt){
+    if(f.month!=='all'){
+      if(!dt) return false; // no due/invoice date — can't belong to a specific month
       const m = parseInt(dt.split('-')[1]);
       if(tillMode ? m>moNum : m!==moNum) return false;
     }
