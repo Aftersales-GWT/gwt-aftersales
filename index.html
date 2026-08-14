@@ -321,6 +321,19 @@ const _AC = {
     { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false },  // Upcoming Payments
   ]
 };
+// Quick "days from today" range presets — shared by all 3 Action Centre tabs.
+// Declared here (not down near the rest of the Action Centre code) because the
+// locked ?view=action mode renders Slide 11 on the very first paint, before the
+// data even loads — a `const` declared later in the file would still be in its
+// temporal dead zone at that point and throw.
+const _AC_RANGES = [
+  {v:'all',     l:'All Time'},
+  {v:'overdue', l:'Overdue'},
+  {v:'30',      l:'Next 30 Days'},
+  {v:'90',      l:'Next 3 Months'},
+  {v:'180',     l:'Next 6 Months'},
+  {v:'365',     l:'Next 12 Months'},
+];
 
 /* ── DATA ── */
 
@@ -668,7 +681,10 @@ function buildSlideNav(){
     const sName=parts[1]||'';
     const t=document.createElement('div');
     t.className='snav-tab'+(s.id===activeSlide?' active':'');
-    t.innerHTML='<span style="font-size:9px;font-weight:700;opacity:0.7;display:block;letter-spacing:0.5px;text-transform:uppercase">'+sNum+'</span><span style="font-size:11.5px;font-weight:600;display:block">'+sName+'</span>';
+    // In the locked single-slide view there's no "Slide N" sequence to speak of — just show the name
+    t.innerHTML = LOCKED_SLIDE
+      ? '<span style="font-size:12.5px;font-weight:700">'+sName+'</span>'
+      : '<span style="font-size:9px;font-weight:700;opacity:0.7;display:block;letter-spacing:0.5px;text-transform:uppercase">'+sNum+'</span><span style="font-size:11.5px;font-weight:600;display:block">'+sName+'</span>';
     t.onclick=()=>{activeSlide=s.id;buildSlideNav();buildGroupSubnav();buildToolbar();renderActive();};
     nav.appendChild(t);
   });
@@ -3810,15 +3826,6 @@ function _acSectionBanner(text, count, totalTxt, bg, col){
   </div>`;
 }
 
-// Quick "days from today" range presets — shared by all 3 Action Centre tabs
-const _AC_RANGES = [
-  {v:'all',     l:'All Time'},
-  {v:'overdue', l:'Overdue'},
-  {v:'30',      l:'Next 30 Days'},
-  {v:'90',      l:'Next 3 Months'},
-  {v:'180',     l:'Next 6 Months'},
-  {v:'365',     l:'Next 12 Months'},
-];
 // days = Math.round((targetDate - today) / 1 day). Positive = future, negative = past.
 function _acDaysUntil(dateStr){
   if(!dateStr) return null;
