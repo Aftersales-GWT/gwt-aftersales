@@ -316,9 +316,10 @@ let ptChartVisible=true,ptCumulative=false;
 const _AC = {
   tab: 0,
   f: [
-    { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false },  // Contract Renewals
-    { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false },  // Upcoming Invoices
-    { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false },  // Upcoming Payments
+    { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false, expanded:[] },  // Contract Renewals
+    { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false, expanded:[] },  // Upcoming Invoices
+    { year:'all', month:'all', status:'open', grp:'all', range:'all', till:false, expanded:[] },  // Upcoming Payments
+    { forecast:false, expanded:[] },                                                              // Cash Inflow
   ]
 };
 // Quick "days from today" range presets — shared by all 3 Action Centre tabs.
@@ -4021,27 +4022,75 @@ function _acInvoicesBody(){
     const totPlan = list.reduce((s,r)=>s+r.invPlan,0);
     const totAct  = list.reduce((s,r)=>s+r.iAmt,0);
     const totGap  = list.reduce((s,r)=>s+Math.max(0,r.invPlan-r.iAmt),0);
+
+    // Group by Group → Client, so amounts roll up instead of listing every invoice flat
+    const exp = f.expanded;
+    const tree = {};
+    list.forEach(r=>{
+      const g=r.g||'Other', c=r.cl||'—';
+      if(!tree[g]) tree[g]={clients:{},plan:0,act:0,gap:0,count:0};
+      if(!tree[g].clients[c]) tree[g].clients[c]={rows:[],plan:0,act:0,gap:0};
+      const G=tree[g], C=G.clients[c];
+      const gapV=Math.max(0,r.invPlan-r.iAmt);
+      G.plan+=r.invPlan; G.act+=r.iAmt; G.gap+=gapV; G.count++;
+      C.plan+=r.invPlan; C.act+=r.iAmt; C.gap+=gapV;
+      C.rows.push(r);
+    });
+
+    let body='';
+    Object.keys(tree).sort().forEach(g=>{
+      const G=tree[g];
+      const gKey='g:'+g, gKeyEsc=gKey.replace(/'/g,"\\'");
+      const gExp=exp.includes(gKey);
+      body+=`<tr style="background:#eef3fa;cursor:pointer" onclick="_acToggleExpand(1,'${gKeyEsc}')">
+        <td colspan="3" style="padding:8px 11px;font-weight:700;font-size:11.5px;color:#003366">${gExp?'▼':'▶'} ${g} <span style="font-size:10px;color:#94a3b8;font-weight:400">(${G.count})</span></td>
+        <td></td>
+        <td class="r">${_acFmt(G.plan)}</td>
+        <td></td>
+        <td class="r" style="color:#16a34a">${G.act>0?_acFmt(G.act):'—'}</td>
+        <td class="r" style="color:${G.gap>0?'#dc2626':'#16a34a'};font-weight:700">${G.gap>0?_acFmt(G.gap):'—'}</td>
+        <td></td>
+      </tr>`;
+      if(!gExp) return;
+
+      Object.keys(G.clients).sort().forEach(c=>{
+        const C=G.clients[c];
+        const cKey=gKey+'|c:'+c, cKeyEsc=cKey.replace(/'/g,"\\'");
+        const cExp=exp.includes(cKey);
+        body+=`<tr style="background:#f8fafd;cursor:pointer" onclick="_acToggleExpand(1,'${cKeyEsc}')">
+          <td colspan="3" style="padding:7px 11px 7px 28px;font-weight:600;font-size:11px;color:#374151;max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${c}">${cExp?'▼':'▶'} 👤 ${c} <span style="font-size:10px;color:#94a3b8;font-weight:400">(${C.rows.length})</span></td>
+          <td></td>
+          <td class="r">${_acFmt(C.plan)}</td>
+          <td></td>
+          <td class="r" style="color:#16a34a">${C.act>0?_acFmt(C.act):'—'}</td>
+          <td class="r" style="color:${C.gap>0?'#dc2626':'#16a34a'};font-weight:700">${C.gap>0?_acFmt(C.gap):'—'}</td>
+          <td></td>
+        </tr>`;
+        if(!cExp) return;
+
+        C.rows.forEach(r=>{
+          body+=`<tr>
+            <td colspan="3" style="padding:6px 11px 6px 48px;color:#64748b;font-size:10.5px">↳ 🧾 ${r.inv||'—'}</td>
+            <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.invPlanDate)}</td>
+            <td class="r">${_acFmt(r.invPlan)}</td>
+            <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.iDate)}</td>
+            <td class="r" style="color:#16a34a">${r.iAmt>0?_acFmt(r.iAmt):'—'}</td>
+            <td class="r" style="color:${r.invPlan-r.iAmt>0?'#dc2626':'#16a34a'};font-weight:700">${r.invPlan>r.iAmt?_acFmt(r.invPlan-r.iAmt):'—'}</td>
+            <td style="text-align:center">${stsBadge(r)}</td>
+          </tr>`;
+        });
+      });
+    });
+
     return `<div style="overflow-x:auto">
     <table class="gwt-pop-table">
       <thead><tr>
-        <th>Client</th><th>Group</th><th>Invoice #</th>
+        <th colspan="3">Group / Client / Invoice</th>
         <th>Planned Inv. Date</th><th class="r">Plan Amount</th>
         <th>Invoice Date</th><th class="r">Invoiced</th>
         <th class="r">Gap</th><th style="text-align:center">Status</th>
       </tr></thead>
-      <tbody>
-      ${list.map(r=>`<tr>
-        <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.cl}">${r.cl||'—'}</td>
-        <td><span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">${r.g}</span></td>
-        <td style="color:#64748b;font-size:10.5px">${r.inv||'—'}</td>
-        <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.invPlanDate)}</td>
-        <td class="r">${_acFmt(r.invPlan)}</td>
-        <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.iDate)}</td>
-        <td class="r" style="color:#16a34a">${r.iAmt>0?_acFmt(r.iAmt):'—'}</td>
-        <td class="r" style="color:${r.invPlan-r.iAmt>0?'#dc2626':'#16a34a'};font-weight:700">${r.invPlan>r.iAmt?_acFmt(r.invPlan-r.iAmt):'—'}</td>
-        <td style="text-align:center">${stsBadge(r)}</td>
-      </tr>`).join('')}
-      </tbody>
+      <tbody>${body}</tbody>
       <tfoot><tr>
         <td colspan="4" style="background:#dbeafe;padding:7px 10px;font-weight:800;color:#1e3a5f;border-top:2px solid #93c5fd">TOTAL</td>
         <td class="r" style="background:#dbeafe;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#1e40af;border-top:2px solid #93c5fd">${_acFmt(totPlan)}</td>
@@ -4136,27 +4185,72 @@ function _acPaymentsBody(){
     const totInv = list.reduce((s,r)=>s+r.iAmt,0);
     const totRec = list.reduce((s,r)=>s+r.payRec,0);
     const totOut = list.reduce((s,r)=>s+r.payDue,0);
+
+    // Group by Group → Client, so amounts roll up instead of listing every invoice flat
+    const exp = f.expanded;
+    const tree = {};
+    list.forEach(r=>{
+      const g=r.g||'Other', c=r.cl||'—';
+      if(!tree[g]) tree[g]={clients:{},inv:0,rec:0,out:0,count:0};
+      if(!tree[g].clients[c]) tree[g].clients[c]={rows:[],inv:0,rec:0,out:0};
+      const G=tree[g], C=G.clients[c];
+      G.inv+=r.iAmt; G.rec+=r.payRec; G.out+=r.payDue; G.count++;
+      C.inv+=r.iAmt; C.rec+=r.payRec; C.out+=r.payDue;
+      C.rows.push(r);
+    });
+
+    let body='';
+    Object.keys(tree).sort().forEach(g=>{
+      const G=tree[g];
+      const gKey='g:'+g, gKeyEsc=gKey.replace(/'/g,"\\'");
+      const gExp=exp.includes(gKey);
+      body+=`<tr style="background:#fef2f2;cursor:pointer" onclick="_acToggleExpand(2,'${gKeyEsc}')">
+        <td colspan="3" style="padding:8px 11px;font-weight:700;font-size:11.5px;color:#7f1d1d">${gExp?'▼':'▶'} ${g} <span style="font-size:10px;color:#94a3b8;font-weight:400">(${G.count})</span></td>
+        <td></td><td></td>
+        <td class="r">${_acFmt(G.inv)}</td>
+        <td class="r" style="color:#16a34a">${G.rec>0?_acFmt(G.rec):'—'}</td>
+        <td class="r" style="color:${G.out>0?'#dc2626':'#16a34a'};font-weight:700">${G.out>0?_acFmt(G.out):'—'}</td>
+        <td></td>
+      </tr>`;
+      if(!gExp) return;
+
+      Object.keys(G.clients).sort().forEach(c=>{
+        const C=G.clients[c];
+        const cKey=gKey+'|c:'+c, cKeyEsc=cKey.replace(/'/g,"\\'");
+        const cExp=exp.includes(cKey);
+        body+=`<tr style="background:#fffafa;cursor:pointer" onclick="_acToggleExpand(2,'${cKeyEsc}')">
+          <td colspan="3" style="padding:7px 11px 7px 28px;font-weight:600;font-size:11px;color:#374151;max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${c}">${cExp?'▼':'▶'} 👤 ${c} <span style="font-size:10px;color:#94a3b8;font-weight:400">(${C.rows.length})</span></td>
+          <td></td><td></td>
+          <td class="r">${_acFmt(C.inv)}</td>
+          <td class="r" style="color:#16a34a">${C.rec>0?_acFmt(C.rec):'—'}</td>
+          <td class="r" style="color:${C.out>0?'#dc2626':'#16a34a'};font-weight:700">${C.out>0?_acFmt(C.out):'—'}</td>
+          <td></td>
+        </tr>`;
+        if(!cExp) return;
+
+        C.rows.forEach(r=>{
+          body+=`<tr style="${r.payDue>0&&(r.daysOD||0)>30?'background:#fff5f5':''}">
+            <td colspan="3" style="padding:6px 11px 6px 48px;color:#64748b;font-size:10.5px">↳ 🧾 ${r.inv||'—'}</td>
+            <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.iDate)}</td>
+            <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.payDueDate)}</td>
+            <td class="r">${_acFmt(r.iAmt)}</td>
+            <td class="r" style="color:#16a34a">${r.payRec>0?_acFmt(r.payRec):'—'}</td>
+            <td class="r" style="color:${r.payDue>0?'#dc2626':'#16a34a'};font-weight:700">${r.payDue>0?_acFmt(r.payDue):'—'}</td>
+            <td style="text-align:center">${ageBadge(r)}</td>
+          </tr>`;
+        });
+      });
+    });
+
     return `<div style="overflow-x:auto">
     <table class="gwt-pop-table">
       <thead><tr>
-        <th>Client</th><th>Group</th><th>Invoice #</th>
+        <th colspan="3">Group / Client / Invoice</th>
         <th>Invoice Date</th><th>Due Date</th>
         <th class="r">Invoice Amt</th><th class="r">Collected</th>
         <th class="r">Outstanding</th><th style="text-align:center">Age / Status</th>
       </tr></thead>
-      <tbody>
-      ${list.map(r=>`<tr style="${r.payDue>0&&(r.daysOD||0)>30?'background:#fff5f5':''}">
-        <td style="font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.cl}">${r.cl||'—'}</td>
-        <td><span style="background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">${r.g}</span></td>
-        <td style="color:#64748b;font-size:10.5px">${r.inv||'—'}</td>
-        <td style="font-size:10.5px;white-space:nowrap">${_acDate(r.iDate)}</td>
-        <td style="font-size:10.5px;font-weight:600;white-space:nowrap">${_acDate(r.payDueDate)}</td>
-        <td class="r">${_acFmt(r.iAmt)}</td>
-        <td class="r" style="color:#16a34a">${r.payRec>0?_acFmt(r.payRec):'—'}</td>
-        <td class="r" style="color:${r.payDue>0?'#dc2626':'#16a34a'};font-weight:700">${r.payDue>0?_acFmt(r.payDue):'—'}</td>
-        <td style="text-align:center">${ageBadge(r)}</td>
-      </tr>`).join('')}
-      </tbody>
+      <tbody>${body}</tbody>
       <tfoot><tr>
         <td colspan="5" style="background:#fee2e2;padding:7px 10px;font-weight:800;color:#1e3a5f;border-top:2px solid #fca5a5">TOTAL</td>
         <td class="r" style="background:#fee2e2;padding:7px 10px;font-weight:800;font-family:'Courier New',monospace;color:#1e40af;border-top:2px solid #fca5a5">${_acFmt(totInv)}</td>
@@ -4187,16 +4281,271 @@ function _acPaymentsBody(){
   </div>`;
 }
 
+/* ══════════════════════════════════════════
+   TAB 3: CASH INFLOW — projected receivables by time bucket
+   Columns: Backlog | W1..W4 (rest of this month) | next 5 months
+   Rows:    Group (expand) → Client → Invoice
+   Note: our INV_DATA has no per-invoice "project" field (only SALES_DATA
+   does), so this groups Group → Client → Invoice rather than the 4-level
+   Group → Project → Client → Invoice tree, to avoid fabricating a project
+   label that isn't backed by real data.
+══════════════════════════════════════════ */
+function _acBuildTimeCols(){
+  const T=new Date(); T.setHours(0,0,0,0);
+  const yr=T.getFullYear(), mo=T.getMonth();
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mEnd=new Date(yr,mo+1,0).getDate();
+  const todayStr=T.toISOString().slice(0,10);
+  const cols=[];
+  // 4 weekly buckets covering the rest of the current calendar month
+  const wBounds=[7,14,21,mEnd];
+  let ws=1;
+  wBounds.forEach((we,wi)=>{
+    const s=new Date(yr,mo,ws), e=new Date(yr,mo,we);
+    const sStr=s.toISOString().slice(0,10), eStr=e.toISOString().slice(0,10);
+    cols.push({label:'W'+(wi+1)+' '+MON[mo],sub:ws+'-'+we+' '+MON[mo],
+               start:sStr,end:eStr,type:'week',
+               isPast:eStr<todayStr, isCurr:sStr<=todayStr&&todayStr<=eStr});
+    ws=we+1;
+  });
+  // 5 monthly buckets after the current month
+  for(let i=1;i<=5;i++){
+    const d=new Date(yr,mo+i,1);
+    const e=new Date(yr,mo+i+1,0);
+    cols.push({label:MON[d.getMonth()]+' '+d.getFullYear(),sub:'',
+               start:d.toISOString().slice(0,10),end:e.toISOString().slice(0,10),
+               type:'month',isPast:false,isCurr:false});
+  }
+  return cols;
+}
+
+function _acBuildCashTree(cols,forecast){
+  const todayStr=new Date().toISOString().slice(0,10);
+  function bucket(dStr){
+    if(!dStr) return -1;
+    if(dStr<todayStr) return 'bl';
+    for(let i=0;i<cols.length;i++){ if(dStr>=cols[i].start&&dStr<=cols[i].end) return i; }
+    return -1;
+  }
+  function node(){return {bl:0,blF:0,cols:new Array(cols.length).fill(0),colsF:new Array(cols.length).fill(0)};}
+  function add(nd,bkt,amt,isForecast){
+    if(bkt==='bl'){ isForecast?nd.blF+=amt:nd.bl+=amt; }
+    else if(typeof bkt==='number'&&bkt>=0&&bkt<cols.length){ isForecast?nd.colsF[bkt]+=amt:nd.cols[bkt]+=amt; }
+  }
+
+  const tree={}; // group → client → invoices[]
+  INV_DATA.forEach(r=>{
+    const g=r.g||'Other', c=r.cl||'—', inv=r.inv||'—';
+    if(!tree[g]) tree[g]={...node(),clients:{}};
+    if(!tree[g].clients[c]) tree[g].clients[c]={...node(),invoices:[]};
+    const G=tree[g], C=G.clients[c];
+
+    // Actual outstanding
+    if(r.payDue>0&&r.payDueDate){
+      const bkt=bucket(r.payDueDate);
+      add(G,bkt,r.payDue,false); add(C,bkt,r.payDue,false);
+      C.invoices.push({inv,date:r.payDueDate,amt:r.payDue,iAmt:r.iAmt,type:'actual',bkt});
+    }
+    // Forecast: planned but not raised yet
+    if(forecast&&r.invPlan>0&&r.iAmt===0&&r.invPlanDate){
+      const credit=r.creditDays||30;
+      const ed=new Date(r.invPlanDate); ed.setDate(ed.getDate()+credit);
+      const edStr=ed.toISOString().slice(0,10);
+      const bkt=bucket(edStr);
+      add(G,bkt,r.invPlan,true); add(C,bkt,r.invPlan,true);
+      C.invoices.push({inv,date:edStr,amt:r.invPlan,iAmt:0,type:'forecast',bkt});
+    }
+  });
+  return tree;
+}
+
+function _acToggleCashKey(key){
+  const idx = _AC.f[3].expanded.indexOf(key);
+  if(idx>=0) _AC.f[3].expanded.splice(idx,1);
+  else _AC.f[3].expanded.push(key);
+  renderActionCentre(document.getElementById('mainContent'));
+}
+function _acToggleForecast(){
+  _AC.f[3].forecast = !_AC.f[3].forecast;
+  renderActionCentre(document.getElementById('mainContent'));
+}
+// Generic Group/Client tree expand-collapse, used by the Upcoming Invoices and
+// Upcoming Payments tabs' grouped tables (tabIdx: 1 or 2)
+function _acToggleExpand(tabIdx, key){
+  const arr = _AC.f[tabIdx].expanded;
+  const idx = arr.indexOf(key);
+  if(idx>=0) arr.splice(idx,1);
+  else arr.push(key);
+  renderActionCentre(document.getElementById('mainContent'));
+}
+
+function _acCashInflowBody(){
+  const fc=_AC.f[3].forecast;
+  const exp=_AC.f[3].expanded;
+  const cols=_acBuildTimeCols();
+  const tree=_acBuildCashTree(cols,fc);
+
+  const fmt=v=>{if(!v)return '—';if(v>=1e6)return (v/1e6).toFixed(2)+'M';if(v>=1000)return (v/1000).toFixed(0)+'K';return Math.round(v).toLocaleString();};
+
+  // Totals per column across all groups
+  const totBl={a:0,f:0}, totCols=cols.map(()=>({a:0,f:0}));
+  Object.values(tree).forEach(G=>{
+    totBl.a+=G.bl; totBl.f+=G.blF;
+    cols.forEach((_,i)=>{ totCols[i].a+=G.cols[i]; totCols[i].f+=G.colsF[i]; });
+  });
+  const grandBl=totBl.a+totBl.f;
+
+  const thStyle=`style="padding:8px 8px;text-align:right;font-size:10px;font-weight:700;color:#bfdbfe;white-space:nowrap;border-left:1px solid rgba(255,255,255,.1)"`;
+  const thFixed=`style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#bfdbfe;position:sticky;left:0;background:linear-gradient(135deg,#003366,#065f46);z-index:2"`;
+
+  let rows='';
+  Object.keys(tree).sort().forEach(g=>{
+    const G=tree[g];
+    const gKey='g:'+g;
+    const gKeyEsc=gKey.replace(/'/g,"\\'");
+    const gExp=exp.includes(gKey);
+    const hasData=G.bl>0||G.blF>0||G.cols.some(v=>v>0)||G.colsF.some(v=>v>0);
+    if(!hasData) return;
+
+    rows+=`<tr style="background:#e0f2fe;cursor:pointer" onclick="_acToggleCashKey('${gKeyEsc}')">
+      <td style="padding:9px 12px;font-size:12px;font-weight:800;color:#0c4a6e;position:sticky;left:0;background:#e0f2fe;z-index:1;white-space:nowrap">
+        ${gExp?'▼':'▶'} ${g}
+      </td>
+      <td style="text-align:right;padding:9px 8px;font-size:12px;font-weight:700;color:${G.bl>0?'#dc2626':'#059669'}">
+        ${G.bl>0?fmt(G.bl):fc&&G.blF>0?fmt(G.blF):'—'}
+      </td>
+      ${cols.map((_,i)=>`<td style="text-align:right;padding:9px 8px;font-size:11px;font-weight:700;color:#0c4a6e">${(G.cols[i]+G.colsF[i])>0?fmt(G.cols[i]+G.colsF[i]):'—'}</td>`).join('')}
+    </tr>`;
+
+    if(!gExp) return;
+
+    Object.keys(G.clients).sort().forEach(c=>{
+      const C=G.clients[c];
+      const cKey=gKey+'|c:'+c;
+      const cKeyEsc=cKey.replace(/'/g,"\\'");
+      const cExp=exp.includes(cKey);
+      const cHas=C.bl>0||C.blF>0||C.cols.some(v=>v>0)||C.colsF.some(v=>v>0);
+      if(!cHas) return;
+
+      rows+=`<tr style="background:#f8fffe;cursor:pointer" onclick="_acToggleCashKey('${cKeyEsc}')">
+        <td style="padding:8px 12px 8px 28px;font-size:11px;font-weight:600;color:#374151;position:sticky;left:0;background:#f8fffe;z-index:1;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${c}">
+          ${cExp?'▼':'▶'} 👤 ${c}
+        </td>
+        <td style="text-align:right;padding:8px;font-size:11px;color:${C.bl>0?'#dc2626':'#94a3b8'}">${C.bl>0?fmt(C.bl):'—'}</td>
+        ${cols.map((_,i)=>`<td style="text-align:right;padding:8px;font-size:11px;color:#374151">${(C.cols[i]+C.colsF[i])>0?fmt(C.cols[i]+C.colsF[i]):'—'}</td>`).join('')}
+      </tr>`;
+
+      if(!cExp) return;
+
+      C.invoices.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(inv=>{
+        const isFc=inv.type==='forecast';
+        const invBl=inv.bkt==='bl';
+        const bktIdx=typeof inv.bkt==='number'?inv.bkt:-1;
+        rows+=`<tr style="background:${isFc?'#faf5ff':'#fff'};border-left:3px solid ${isFc?'#7c3aed':'#059669'}">
+          <td style="padding:6px 12px 6px 48px;font-size:10px;color:#94a3b8;position:sticky;left:0;background:inherit;z-index:1;white-space:nowrap">
+            🧾 ${inv.inv} <span style="background:${isFc?'#ede9fe':'#dcfce7'};color:${isFc?'#7c3aed':'#059669'};padding:1px 5px;border-radius:5px;font-size:9px">${isFc?'Forecast':'Actual'}</span>
+            <span style="color:#94a3b8;font-size:9px;margin-left:4px">${inv.date||'—'}</span>
+          </td>
+          <td style="text-align:right;padding:6px 8px;font-size:10px;color:${invBl?'#dc2626':'#94a3b8'};font-weight:600">${invBl?fmt(inv.amt):'—'}</td>
+          ${cols.map((_,i)=>`<td style="text-align:right;padding:6px 8px;font-size:10px;color:${isFc?'#7c3aed':'#059669'}">${bktIdx===i?fmt(inv.amt):'—'}</td>`).join('')}
+        </tr>`;
+      });
+    });
+  });
+
+  return `<div style="display:flex;flex-direction:column;height:100%">
+    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;flex-shrink:0;border-radius:10px 10px 0 0">
+      <div>
+        <div style="color:#fca5a5;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">📌 Backlog — Overdue receivables (up to yesterday)</div>
+        <div style="color:#fff;font-size:18px;font-weight:800;font-family:'Courier New',monospace;margin-top:2px">
+          AED ${fmt(grandBl)} &nbsp;<span style="font-size:11px;font-weight:400;opacity:.7">${fc?'(incl. forecast)':'invoiced only'}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${totCols.map((tc,i)=>(tc.a+tc.f)>0?`
+          <div style="background:rgba(255,255,255,.12);border-radius:8px;padding:6px 12px;text-align:center">
+            <div style="font-size:9px;color:#fca5a5;font-weight:700">${cols[i].label}</div>
+            <div style="font-size:13px;font-weight:800;color:#fff">AED ${fmt(tc.a+tc.f)}</div>
+          </div>`:'').join('')}
+      </div>
+    </div>
+
+    <div style="flex:1;overflow:auto;border:1.5px solid #6ee7b7;border-top:none">
+      <table style="border-collapse:collapse;width:100%;min-width:600px;background:#fff">
+        <thead style="position:sticky;top:0;z-index:3">
+          <tr style="background:linear-gradient(135deg,#003366,#065f46)">
+            <th ${thFixed}>Group / Client / Invoice</th>
+            <th ${thStyle} style="color:#fca5a5;padding:8px 8px;text-align:right;font-size:10px;font-weight:700;background:#7f1d1d;white-space:nowrap;border-left:2px solid rgba(255,255,255,.2)">🚨 Backlog</th>
+            ${cols.map(c=>`<th ${thStyle} style="${c.isCurr?'background:rgba(255,255,255,.1)':''}">
+              <div>${c.label}</div>
+              ${c.sub?`<div style="font-size:8px;opacity:.7">${c.sub}</div>`:''}
+            </th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows||`<tr><td colspan="${cols.length+2}" style="text-align:center;padding:40px;color:#94a3b8;font-size:12px">No outstanding payments.</td></tr>`}
+        </tbody>
+        <tfoot style="position:sticky;bottom:0;z-index:3">
+          <tr style="background:#f0f9ff;border-top:2px solid #0057a0">
+            <td style="padding:8px 12px;font-size:11px;font-weight:800;color:#0c4a6e;position:sticky;left:0;background:#f0f9ff">TOTAL</td>
+            <td style="text-align:right;padding:8px;font-size:12px;font-weight:800;color:#dc2626;font-family:'Courier New',monospace">AED ${fmt(totBl.a+totBl.f)}</td>
+            ${cols.map((_,i)=>`<td style="text-align:right;padding:8px;font-size:12px;font-weight:800;color:#0057a0;font-family:'Courier New',monospace">${(totCols[i].a+totCols[i].f)>0?'AED '+fmt(totCols[i].a+totCols[i].f):'—'}</td>`).join('')}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>`;
+}
+
 /* ── MAIN RENDER: 3-tab shell + filter bar ── */
 function renderActionCentre(mc){
   const TAB_CFG=[
     {icon:'🔄', label:'Contract Renewals', color:'#7c3aed', light:'#f5f3ff', border:'#c4b5fd'},
     {icon:'📋', label:'Upcoming Invoices',  color:'#0057a0', light:'#eff6ff', border:'#93c5fd'},
     {icon:'💰', label:'Upcoming Payments',  color:'#dc2626', light:'#fff1f2', border:'#fca5a5'},
+    {icon:'📊', label:'Cash Inflow',        color:'#059669', light:'#ecfdf5', border:'#6ee7b7'},
   ];
   const t  = _AC.tab;
   const f  = _AC.f[t];
   const TC = TAB_CFG[t];
+
+  if(t===3){
+    const fc = f.forecast;
+    const modeBar = `
+    <div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Mode</span>
+      <button onclick="_acToggleForecast()" style="background:${!fc?'#059669':'#f8fafc'};color:${!fc?'#fff':'#059669'};border:2px solid #059669;border-radius:14px;padding:5px 16px;font-size:11px;font-weight:700;cursor:pointer">📋 Invoiced Only</button>
+      <button onclick="_acToggleForecast()" style="background:${fc?'#7c3aed':'#f8fafc'};color:${fc?'#fff':'#7c3aed'};border:2px solid #7c3aed;border-radius:14px;padding:5px 16px;font-size:11px;font-weight:700;cursor:pointer">🔮 Include Forecast</button>
+      <span style="font-size:10px;color:#94a3b8">Invoiced Only = amounts already invoiced and outstanding. Include Forecast also adds planned-but-not-yet-raised invoices, expected on Plan Date + Credit Days.</span>
+    </div>`;
+    mc.innerHTML=`
+    <div style="padding:14px 18px 10px;height:100%;display:flex;flex-direction:column;box-sizing:border-box;gap:0">
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
+        <div style="width:6px;height:40px;background:linear-gradient(180deg,${TC.color},${TC.color}99);border-radius:4px;margin-right:12px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px;line-height:1.1">⚡ Action Centre</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:1px">Contract renewals · Invoices · Payments · Cash Inflow</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:10px">
+        ${TAB_CFG.map((tb,i)=>{
+          const on=_AC.tab===i;
+          return `<button onclick="_acSetTab(${i})"
+            style="display:flex;align-items:center;gap:6px;
+                   background:${on?tb.color:tb.light};color:${on?'#fff':tb.color};
+                   border:2px solid ${on?tb.color:tb.border};
+                   border-bottom:${on?'2px solid '+tb.color:'2px solid transparent'};
+                   border-radius:8px 8px 0 0;padding:8px 18px;font-size:12px;font-weight:700;
+                   cursor:pointer;white-space:nowrap;margin-bottom:-2px;
+                   box-shadow:${on?'0 -2px 8px '+tb.color+'22':''};transition:all .15s"
+            >${tb.icon} ${tb.label}</button>`;
+        }).join('')}
+      </div>
+      ${modeBar}
+      <div style="flex:1;min-height:0">${_acCashInflowBody()}</div>
+    </div>`;
+    return;
+  }
 
   function yearsFrom(arr, dateKey){
     const ys = new Set();
@@ -4285,7 +4634,7 @@ function renderActionCentre(mc){
       <div style="width:6px;height:40px;background:linear-gradient(180deg,${TC.color},${TC.color}99);border-radius:4px;margin-right:12px;flex-shrink:0"></div>
       <div style="flex:1">
         <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px;line-height:1.1">⚡ Action Centre</div>
-        <div style="font-size:11px;color:#94a3b8;margin-top:1px">Contract renewals · Invoices · Payments</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:1px">Contract renewals · Invoices · Payments · Cash Inflow</div>
       </div>
     </div>
 
