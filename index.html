@@ -288,7 +288,66 @@ const SLIDES = [
   {id:'s-inv-plan', label:'Slide 9 – Invoice Plan vs Actual',  toolbar:'invplan',    subnav:false},
   {id:'s-pay-tgt',  label:'Slide 10 – Payment Target vs Actual',toolbar:'paytgt',   subnav:false},
   {id:'s-action',   label:'Slide 11 – Action Centre',           toolbar:'none',     subnav:false},
+  {id:'s-sales-mon',    label:'Slide 12 – Sales Monitor',       toolbar:'none',     subnav:false},
+  {id:'s-renewals-only',label:'Slide 13 – Contract Renewals',   toolbar:'none',     subnav:false},
 ];
+
+/* ── GROUPED NAVIGATION ──
+   Top nav shows these categories; picking one reveals its items in the row
+   below. An item can jump straight to a specific Action Centre tab via acTab,
+   or a specific Sales Monitor tab via smTab. Items flagged `more:true` are
+   hidden behind the "⋯ More" toggle in the sub-nav row. */
+const NAV_GROUPS = [
+  {id:'ng-dash', label:'Dashboard',   icon:'📊', color:'#1e293b',
+   items:[
+     {label:'Dashboard',  slide:'s-dashboard'},
+     {label:'Cover',      slide:'s-cover'},
+     {label:'Guidelines', slide:'s-guide'},
+   ]},
+  {id:'ng-sales',label:'Sales',       icon:'📈', color:'#0057a0',
+   items:[
+     {label:'Sales Overview',    slide:'s-sales-ov'},
+     {label:'Sales History',     slide:'s-sales-mon', smTab:0},
+     {label:'Order Pipeline',    slide:'s-sales-mon', smTab:1},
+     {label:'Contract Renewals', slide:'s-renewals-only'},
+   ]},
+  {id:'ng-ops',  label:'Operations', icon:'⚙️', color:'#7c3aed',
+   items:[
+     {label:'Order Status', slide:'s-order'},
+     {label:'Site Report',  slide:'s-site'},
+   ]},
+  {id:'ng-fin',  label:'Finance',    icon:'💰', color:'#059669',
+   items:[
+     {label:'Upcoming Invoices',        slide:'s-action', acTab:1},
+     {label:'Upcoming Payments',        slide:'s-action', acTab:2},
+     {label:'Cash Inflow',              slide:'s-action', acTab:3},
+     {label:'R&C Overview',             slide:'s-inv-pay',  more:true},
+     {label:'AR & Recovery',            slide:'s-rec',      more:true},
+     {label:'Late Payers',              slide:'s-late',     more:true},
+     {label:'Invoice Plan vs Actual',   slide:'s-inv-plan', more:true},
+     {label:'Payment Target vs Actual', slide:'s-pay-tgt',  more:true},
+     {label:'Contract Renewals',        slide:'s-action', acTab:0, more:true},
+   ]},
+];
+let activeNavGroup = 'ng-dash';
+let activeNavItem = 0;
+let _navMoreOpen = false; // "⋯ More" toggle state in the sub-nav row
+
+function navGoTo(gid, iIdx){
+  if(gid !== activeNavGroup) _navMoreOpen = false;
+  activeNavGroup = gid;
+  activeNavItem = iIdx;
+  const grp = NAV_GROUPS.find(g=>g.id===gid);
+  const item = grp.items[iIdx];
+  activeSlide = item.slide;
+  if(item.acTab!==undefined) _AC.tab = item.acTab;
+  if(item.smTab!==undefined) _SM.tab = item.smTab;
+  buildSlideNav(); buildGroupSubnav(); buildToolbar(); renderActive();
+}
+function _navToggleMore(){
+  _navMoreOpen = !_navMoreOpen;
+  buildGroupSubnav();
+}
 
 // Locked single-slide view — visit index.html?view=action to restrict navigation to
 // Slide 11 only (hides every other tab). This is a UI convenience, not real access
@@ -322,6 +381,16 @@ const _AC = {
     { forecast:false, expanded:[] },                                                              // Cash Inflow
   ]
 };
+
+// Slide 12 — Sales Monitor filter state (tab 0: Sales History, tab 1: Order Pipeline)
+const _SM = {
+  tab: 0,
+  f: [
+    { grp:'all', expanded:[] },                 // Sales History
+    { status:'all', grp:'all', expanded:[] },   // Order Pipeline
+  ]
+};
+
 // Quick "days from today" range presets — shared by all 3 Action Centre tabs.
 // Declared here (not down near the rest of the Action Centre code) because the
 // locked ?view=action mode renders Slide 11 on the very first paint, before the
@@ -675,52 +744,71 @@ function getTgtRange(){
 function buildSlideNav(){
   const nav=document.getElementById('slideNav');
   nav.innerHTML='';
-  const visSlides = LOCKED_SLIDE ? SLIDES.filter(s=>s.id===LOCKED_SLIDE) : SLIDES;
-  visSlides.forEach(s=>{
-    const parts=s.label.split(' – ');
-    const sNum=parts[0]||s.label;
-    const sName=parts[1]||'';
+  if(LOCKED_SLIDE){
+    // Locked view: a single bare tab, no categories to speak of
+    const s = SLIDES.find(sl=>sl.id===LOCKED_SLIDE);
+    const sName = (s.label.split(' – ')[1])||s.label;
     const t=document.createElement('div');
-    t.className='snav-tab'+(s.id===activeSlide?' active':'');
-    // In the locked single-slide view there's no "Slide N" sequence to speak of — just show the name
-    t.innerHTML = LOCKED_SLIDE
-      ? '<span style="font-size:12.5px;font-weight:700">'+sName+'</span>'
-      : '<span style="font-size:9px;font-weight:700;opacity:0.7;display:block;letter-spacing:0.5px;text-transform:uppercase">'+sNum+'</span><span style="font-size:11.5px;font-weight:600;display:block">'+sName+'</span>';
-    t.onclick=()=>{activeSlide=s.id;buildSlideNav();buildGroupSubnav();buildToolbar();renderActive();};
+    t.className='snav-tab active';
+    t.innerHTML = '<span style="font-size:12.5px;font-weight:700">'+sName+'</span>';
+    nav.appendChild(t);
+    return;
+  }
+  NAV_GROUPS.forEach(g=>{
+    const active = g.id===activeNavGroup;
+    const t=document.createElement('div');
+    t.className='snav-tab'+(active?' active':'');
+    t.innerHTML='<span style="font-size:10px;opacity:0.75;display:block">'+g.icon+'</span>'
+      +'<span style="font-size:11.5px;font-weight:600;display:block">'+g.label+'</span>';
+    t.onclick=()=>navGoTo(g.id,0);
     nav.appendChild(t);
   });
 }
 
-/* ── BUILD GROUP SUBNAV ── */
+/* ── BUILD GROUP SUBNAV — second nav row: items within the active category ── */
 function buildGroupSubnav(){
-  const slide=SLIDES.find(s=>s.id===activeSlide);
   const subnav=document.getElementById('groupSubnav');
-  if(!slide||!slide.subnav){subnav.style.display='none';return;}
-  subnav.style.cssText='display:flex;gap:6px;padding:8px 20px;align-items:center;background:#f8fafc;border-bottom:1px solid #e2e8f0;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap';
-  const GRP_COLORS={AMC:'#005599','O&M':'#0891b2','Re-Routing':'#7c3aed','Retrofit':'#d97706','Service':'#16a34a','Trading':'#dc2626'};
-  function pillBtn(lbl,badge,col,isActive,onclick){
-    const bg   = isActive?col:'#fff';
-    const fc   = isActive?'#fff':col;
-    const bdr  = col;
-    const shadow = isActive?'box-shadow:0 0 0 3px '+col+'44;':'opacity:0.82;';
-    const badgeHtml = badge ? '<span style="background:'+(isActive?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.08)')+';color:'+(isActive?'#fff':col)+';border-radius:10px;padding:1px 6px;font-size:9.5px;font-weight:800;margin-left:4px;letter-spacing:0.2px">'+badge+'</span>' : '';
-    return '<span onclick="'+onclick+'" style="background:'+bg+';color:'+fc+';border:2px solid '+bdr+';border-radius:20px;padding:4px 13px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.15s;display:inline-flex;align-items:center;'+shadow+'">'+lbl+badgeHtml+'</span>';
+  if(LOCKED_SLIDE){ subnav.style.display='none'; return; }
+  const grp=NAV_GROUPS.find(g=>g.id===activeNavGroup);
+  if(!grp||grp.items.length<=1){ subnav.style.display='none'; return; }
+  subnav.style.cssText='display:flex;gap:0;padding:0 20px;align-items:center;background:#f8fafc;border-bottom:1px solid #e2e8f0;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap';
+  const hasMore = grp.items.some(it=>it.more);
+  const activeIsMore = !!(grp.items[activeNavItem] && grp.items[activeNavItem].more);
+  const showMore = _navMoreOpen || activeIsMore;
+  let html = grp.items.map((item,i)=>{
+    if(item.more && !showMore) return '';
+    const active = i===activeNavItem;
+    return `<div class="gnav-tab${active?' active':''}" onclick="navGoTo('${grp.id}',${i})">${item.label}</div>`;
+  }).join('');
+  if(hasMore){
+    html += `<div class="gnav-tab" onclick="_navToggleMore()" title="${showMore?'Hide extra pages':'Show more pages'}" style="color:#059669;font-weight:800">${showMore?'× Less':'⋯ More'}</div>`;
   }
-  let html = '';
-  if(['s-rec','s-order'].includes(activeSlide)){
-    html += pillBtn('All Groups','','#003366',activeGroup==='ALL',"activeGroup='ALL';buildGroupSubnav();renderActive()");
-  }
-  GROUPS.forEach(g=>{
-    const rows=REC_DATA.filter(r=>r.group===g);
-    const od=rows.filter(r=>r.status==='Overdue').length;
-    const badge = od>0 ? '⚠ '+od : (rows.length>0?String(rows.length):'');
-    const col = GRP_COLORS[g]||'#003366';
-    html += pillBtn(g, badge, col, g===activeGroup, "activeGroup='"+g+"';buildGroupSubnav();renderActive()");
-  });
   subnav.innerHTML = html;
 }
 
 /* ── BUILD TOOLBAR ── */
+// Group filter chips (All Groups + AMC/O&M/etc) used by the AR & Recovery and
+// Order Status toolbars — used to live in the shared subnav row, now that slot
+// is taken by the category sub-item nav, so each toolbar renders its own copy.
+function _grpChipBar(){
+  const GRP_COLORS={AMC:'#005599','O&M':'#0891b2','Re-Routing':'#7c3aed','Retrofit':'#d97706',Service:'#16a34a',Trading:'#dc2626'};
+  function pillBtn(lbl,badge,col,isActive,onclick){
+    const bg=isActive?col:'#fff', fc=isActive?'#fff':col;
+    const shadow=isActive?'box-shadow:0 0 0 3px '+col+'44;':'opacity:0.82;';
+    const badgeHtml=badge?'<span style="background:'+(isActive?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.08)')+';color:'+(isActive?'#fff':col)+';border-radius:10px;padding:1px 6px;font-size:9.5px;font-weight:800;margin-left:4px;letter-spacing:0.2px">'+badge+'</span>':'';
+    return '<span onclick="'+onclick+'" style="background:'+bg+';color:'+fc+';border:2px solid '+col+';border-radius:20px;padding:4px 13px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.15s;display:inline-flex;align-items:center;'+shadow+'">'+lbl+badgeHtml+'</span>';
+  }
+  let html = pillBtn('All Groups','','#003366',activeGroup==='ALL',"activeGroup='ALL';buildToolbar();renderActive()");
+  GROUPS.forEach(g=>{
+    const rows=REC_DATA.filter(r=>r.group===g);
+    const od=rows.filter(r=>r.status==='Overdue').length;
+    const badge=od>0?'⚠ '+od:(rows.length>0?String(rows.length):'');
+    const col=GRP_COLORS[g]||'#003366';
+    html += pillBtn(g, badge, col, g===activeGroup, "activeGroup='"+g+"';buildToolbar();renderActive()");
+  });
+  return `<span class="flbl">Group</span><div style="display:flex;gap:5px;flex-wrap:wrap">${html}</div><div class="fdiv"></div>`;
+}
+
 function buildToolbar(){
   const slide=SLIDES.find(s=>s.id===activeSlide);
   const tb=document.getElementById('toolbar');
@@ -915,6 +1003,7 @@ function buildToolbar(){
   }
   if(slide.toolbar==='order'){
     tb.innerHTML=`
+      ${_grpChipBar()}
       <span class="flbl">Year</span>
       <select class="fsel" id="oYear" onchange="renderActive()">
         <option value="all">All Years</option>
@@ -987,6 +1076,7 @@ function buildToolbar(){
   }
   if(slide.toolbar==='rec'){
     tb.innerHTML=`
+      ${_grpChipBar()}
       <span class="flbl">Status</span>
       <select class="fsel" id="fStatus" onchange="renderActive()">
         <option value="all">All</option>
@@ -1078,6 +1168,8 @@ function renderActive(){
   else if(activeSlide==='s-inv-plan') { renderInvPlan(mc); }
   else if(activeSlide==='s-pay-tgt')  { renderPayTarget(mc); }
   else if(activeSlide==='s-action')   { renderActionCentre(mc); }
+  else if(activeSlide==='s-sales-mon')    { renderSalesMonitor(mc); }
+  else if(activeSlide==='s-renewals-only'){ renderRenewalsOnly(mc); }
 }
 
 /* ── SLIDE 1: COVER ── */
@@ -4688,6 +4780,238 @@ function renderActionCentre(mc){
       ${bodyHtml}
     </div>
 
+  </div>`;
+}
+
+/* ══════════════════════════════════════════
+   SLIDE 12: SALES MONITOR — Sales History (3-year) / Order Pipeline
+══════════════════════════════════════════ */
+function _smSetTab(i){
+  _SM.tab = i;
+  renderSalesMonitor(document.getElementById('mainContent'));
+}
+function _smSetF(tabIdx, key, val){
+  _SM.f[tabIdx][key] = val;
+  renderSalesMonitor(document.getElementById('mainContent'));
+}
+function _smToggle(tabIdx, key){
+  const arr = _SM.f[tabIdx].expanded;
+  const idx = arr.indexOf(key);
+  if(idx>=0) arr.splice(idx,1); else arr.push(key);
+  renderSalesMonitor(document.getElementById('mainContent'));
+}
+
+/* ── TAB 0: SALES HISTORY — 3-year Orders/Value/Invoice-Planned comparison ── */
+function _smThreeYearBody(){
+  const f=_SM.f[0];
+  const fk=v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v>0?v.toFixed(0):'—';
+  const displayGrps=f.grp==='all'?GROUPS:GROUPS.filter(g=>g===f.grp);
+  const YEARS=[...new Set(SALES_DATA.map(r=>r.salesYear).filter(y=>y>2000))].sort((a,b)=>a-b).slice(-3);
+  if(!YEARS.length) return _acEmpty('No sales history to show','Load your Excel / connect the Google Sheet first.');
+
+  const grpBtns=['all',...GROUPS].map(g=>`<button onclick="_smSetF(0,'grp','${g}')" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${f.grp===g?'#059669':'#e2e8f0'};background:${f.grp===g?'#059669':'#fff'};color:${f.grp===g?'#fff':'#64748b'}">${g==='all'?'All':g}</button>`).join('');
+
+  const clGrpMap={};
+  SALES_DATA.forEach(r=>{ if(r.client&&r.group) clGrpMap[r.client.toLowerCase()]=r.group; });
+
+  const rows=displayGrps.map(g=>{
+    const isExp=f.expanded.includes(g);
+    const grpSales=SALES_DATA.filter(r=>r.group===g);
+    const grpInv=INV_DATA.filter(r=>clGrpMap[(r.cl||'').toLowerCase()]===g);
+    const yearCols=YEARS.map(y=>{
+      const ys=grpSales.filter(r=>r.salesYear===y);
+      const yi=grpInv.filter(r=>{const d=r.invPlanDate;return d&&new Date(d).getFullYear()===y;});
+      return `<td style="padding:8px 10px;text-align:center;font-size:12px;font-weight:700;border-right:1px solid #e2e8f0">${ys.length||'—'}</td><td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;border-right:1px solid #e2e8f0">AED ${fk(ys.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td style="padding:8px 10px;text-align:right;font-size:12px;color:#059669;border-right:2px solid #cbd5e1">AED ${fk(yi.reduce((s,r)=>s+(r.iAmt||0),0))}</td>`;
+    }).join('');
+    const clientMap={};
+    grpSales.forEach(r=>{ if(!clientMap[r.client]) clientMap[r.client]=[]; clientMap[r.client].push(r); });
+    const clientRows=isExp?Object.entries(clientMap).map(([cl,projs])=>{
+      const clInv=INV_DATA.filter(r=>(r.cl||'').toLowerCase()===cl.toLowerCase());
+      const cy=YEARS.map(y=>{
+        const yp=projs.filter(p=>p.salesYear===y);
+        const yi=clInv.filter(r=>{const d=r.invPlanDate;return d&&new Date(d).getFullYear()===y;});
+        return `<td style="padding:5px 10px;text-align:center;font-size:11px;border-right:1px solid #f1f5f9">${yp.length||'—'}</td><td style="padding:5px 10px;text-align:right;font-size:11px;border-right:1px solid #f1f5f9">AED ${fk(yp.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td style="padding:5px 10px;text-align:right;font-size:11px;color:#059669;border-right:2px solid #e2e8f0">AED ${fk(yi.reduce((s,r)=>s+(r.iAmt||0),0))}</td>`;
+      }).join('');
+      return `<tr style="background:#f8fafc"><td style="padding:5px 8px 5px 32px;font-size:11px;color:#334155">${cl}</td>${cy}</tr>`;
+    }).join(''):'';
+    return `<tr style="background:#d1fae5;cursor:pointer" onclick="_smToggle(0,'${g}')"><td style="padding:10px 12px;font-size:12px;font-weight:800;color:#0f172a">${isExp?'▼':'▶'} ${g}</td>${yearCols}</tr>${clientRows}`;
+  }).join('');
+
+  const hdr2=YEARS.map(y=>`<th colspan="3" style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;border-right:2px solid rgba(255,255,255,.3)">${y}</th>`).join('');
+  const hdr3=YEARS.map(()=>`<th style="padding:6px 10px;text-align:center;font-size:10px;border-right:1px solid rgba(255,255,255,.2)">Orders #</th><th style="padding:6px 10px;text-align:right;font-size:10px;border-right:1px solid rgba(255,255,255,.2)">Order Value</th><th style="padding:6px 10px;text-align:right;font-size:10px;border-right:2px solid rgba(255,255,255,.3)">Inv Planned</th>`).join('');
+
+  return `<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
+    <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
+    ${grpBtns}
+  </div>
+  <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;overflow:auto;max-height:520px">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:#059669;color:#fff"><th style="padding:8px 12px;text-align:left;font-size:11px;min-width:160px">Group / Client</th>${hdr2}</tr>
+        <tr style="background:#047857;color:#fff"><th></th>${hdr3}</tr>
+      </thead>
+      <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:24px;color:#94a3b8">No data</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ── TAB 1: ORDER PIPELINE — grouped by our real order-lifecycle stages ──
+   (Adapted from a reference design that used a Won/Lost sales-pipeline vocabulary
+   our sheet doesn't have; ours groups by the actual Status values in use today.) */
+const _SM_STAGES=['Open','In Progress','Payment','To Invoice','On Hold','Closed','Cancelled','Other'];
+const _SM_STAGE_COLORS={
+  'Open':{bg:'#fef3c7',color:'#d97706'},
+  'In Progress':{bg:'#dbeafe',color:'#0057a0'},
+  'Payment':{bg:'#e0f2fe',color:'#0891b2'},
+  'To Invoice':{bg:'#ede9fe',color:'#7c3aed'},
+  'On Hold':{bg:'#f1f5f9',color:'#64748b'},
+  'Closed':{bg:'#dcfce7',color:'#16a34a'},
+  'Cancelled':{bg:'#fee2e2',color:'#dc2626'},
+  'Other':{bg:'#f5f5f4',color:'#78716c'},
+};
+function _smNormStage(s){
+  s=(s||'').trim();
+  if(/^in ?progress$/i.test(s)) return 'In Progress';
+  if(/^on ?hold$/i.test(s)) return 'On Hold';
+  if(/^to invoice$/i.test(s)) return 'To Invoice';
+  if(s==='Payment') return 'Payment';
+  if(s==='Open') return 'Open';
+  if(s==='Closed') return 'Closed';
+  if(s==='Cancelled') return 'Cancelled';
+  if(!s) return null; // blank status — not a real pipeline row
+  return 'Other';
+}
+
+function _smPipelineBody(){
+  const f=_SM.f[1];
+  const fk=v=>v>=1e6?'AED '+(v/1e6).toFixed(2)+'M':v>=1000?'AED '+(v/1000).toFixed(1)+'K':'AED '+(v||0).toFixed(0);
+  const SC=_SM_STAGE_COLORS;
+
+  let data=SALES_DATA.filter(r=>_smNormStage(r.status)!==null);
+  if(f.status!=='all') data=data.filter(r=>_smNormStage(r.status)===f.status);
+  if(f.grp!=='all') data=data.filter(r=>r.group===f.grp);
+  const totalVal=data.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0);
+
+  const stageBtns=['all',..._SM_STAGES].map(s=>{
+    const active=f.status===s; const sc=SC[s]||{bg:'#7c3aed',color:'#fff'};
+    return `<button onclick="_smSetF(1,'status','${s}')" style="padding:4px 12px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${active?(s==='all'?'#7c3aed':sc.color):'#e2e8f0'};background:${active?(s==='all'?'#7c3aed':sc.bg):'#fff'};color:${active?(s==='all'?'#fff':sc.color):'#64748b'}">${s==='all'?'All Stages':s}</button>`;
+  }).join('');
+  const grpBtns=['all',...GROUPS].map(g=>`<button onclick="_smSetF(1,'grp','${g}')" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${f.grp===g?'#7c3aed':'#e2e8f0'};background:${f.grp===g?'#7c3aed':'#fff'};color:${f.grp===g?'#fff':'#64748b'}">${g==='all'?'All':g}</button>`).join('');
+
+  const grpMap={};
+  data.forEach(r=>{ if(!grpMap[r.group]) grpMap[r.group]=[]; grpMap[r.group].push(r); });
+  const grpRows=Object.entries(grpMap).map(([g,rows])=>{
+    const isExp=f.expanded.includes(g);
+    const clientMap={};
+    rows.forEach(r=>{ if(!clientMap[r.client]) clientMap[r.client]=[]; clientMap[r.client].push(r); });
+    const clientRows=isExp?Object.entries(clientMap).map(([cl,projs])=>{
+      const clKey=g+'|'+cl; const clExp=f.expanded.includes(clKey);
+      const projRows=clExp?projs.map(p=>{
+        const ns=_smNormStage(p.status); const sc=SC[ns]||{bg:'#f1f5f9',color:'#64748b'};
+        return `<tr style="background:#fafafa"><td style="padding:4px 8px 4px 72px;font-size:11px;color:#64748b">${p.proj||'—'}</td><td style="padding:4px 8px;font-size:11px;color:#64748b">${(p.desc||'').slice(0,60)||'—'}</td><td style="padding:4px 8px;text-align:right;font-size:11px">${fk(p.orderValTax||p.orderVal||0)}</td><td style="padding:4px 8px;text-align:center"><span style="background:${sc.bg};color:${sc.color};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${ns}</span></td><td style="padding:4px 8px;text-align:center;font-size:11px">${p.salesYear||'—'}</td></tr>`;
+      }).join(''):'';
+      return `<tr style="background:#f5f3ff;cursor:pointer" onclick="_smToggle(1,'${clKey.replace(/'/g,"\\'")}')"><td style="padding:5px 8px 5px 36px;font-size:11px;font-weight:600;color:#1e293b">${clExp?'▼':'▶'} ${cl}</td><td style="padding:5px 8px;font-size:11px;color:#64748b">${projs.length} order${projs.length!==1?'s':''}</td><td style="padding:5px 8px;text-align:right;font-size:11px;font-weight:600">${fk(projs.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td colspan="2"></td></tr>${projRows}`;
+    }).join(''):'';
+    return `<tr style="background:#ede9fe;cursor:pointer" onclick="_smToggle(1,'${g}')"><td style="padding:8px 12px;font-size:12px;font-weight:800;color:#0f172a">${isExp?'▼':'▶'} ${g}</td><td style="padding:8px 12px;font-size:12px;color:#64748b">${rows.length} orders</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-weight:700">${fk(rows.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td colspan="2"></td></tr>${clientRows}`;
+  }).join('');
+
+  return `<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;align-items:center">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Stage</span>
+      ${stageBtns}
+    </div>
+    <div style="width:1px;height:28px;background:#ddd6fe;flex-shrink:0"></div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
+      ${grpBtns}
+    </div>
+  </div>
+  <div style="font-size:12px;color:#64748b;margin-bottom:8px">${data.length} orders &nbsp;·&nbsp; Total Value: <strong>${fk(totalVal)}</strong></div>
+  <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;overflow:auto;max-height:480px">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:#7c3aed;color:#fff;position:sticky;top:0">
+        <th style="padding:10px 12px;text-align:left;font-size:11px">Group / Client / Project</th>
+        <th style="padding:10px 12px;text-align:left;font-size:11px">Description</th>
+        <th style="padding:10px 12px;text-align:right;font-size:11px">Value</th>
+        <th style="padding:10px 12px;text-align:center;font-size:11px">Stage</th>
+        <th style="padding:10px 12px;text-align:center;font-size:11px">Year</th>
+      </tr></thead>
+      <tbody>${grpRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8">No orders match this filter</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderSalesMonitor(mc){
+  const SM_TABS=[
+    {icon:'📅',label:'Sales History',   color:'#059669',light:'#ecfdf5',border:'#6ee7b7'},
+    {icon:'🎯',label:'Order Pipeline',  color:'#7c3aed',light:'#f5f3ff',border:'#c4b5fd'},
+  ];
+  const t=_SM.tab, TC=SM_TABS[t];
+  const tabBar=SM_TABS.map((tb,i)=>`
+    <button onclick="_smSetTab(${i})" style="padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid ${i===t?tb.color:'#e2e8f0'};background:${i===t?tb.color:'#fff'};color:${i===t?'#fff':'#64748b'}">
+      ${tb.icon} ${tb.label}
+    </button>`).join('');
+  let bodyHtml='';
+  if(t===0) bodyHtml=_smThreeYearBody();
+  if(t===1) bodyHtml=_smPipelineBody();
+  mc.innerHTML=`
+  <div style="padding:16px 20px;max-width:1200px;margin:0 auto">
+    <div style="margin-bottom:14px">
+      <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px">📈 Sales Monitor</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:1px">Sales History · Order Pipeline</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${tabBar}</div>
+    ${bodyHtml}
+  </div>`;
+}
+
+/* ══════════════════════════════════════════
+   SLIDE 13: CONTRACT RENEWALS — standalone quick view (Sales category)
+   Reuses _acRenewalsBody() and shares Action Centre's own filter state
+   (_AC.f[0]), so filtering here and in Action Centre's Renewals tab stays in sync.
+══════════════════════════════════════════ */
+function renderRenewalsOnly(mc){
+  const f=_AC.f[0];
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const years=[...new Set(SALES_DATA.map(r=>r.salesYear).filter(y=>y>2000))].sort((a,b)=>b-a);
+  const btn=(val,cur,key,label)=>`<button onclick="_AC.f[0]['${key}']='${val}';renderRenewalsOnly(document.getElementById('mainContent'))" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${cur===val?'#7c3aed':'#e2e8f0'};background:${cur===val?'#7c3aed':'#fff'};color:${cur===val?'#fff':'#64748b'}">${label!==undefined?label:(val==='all'?'All':val)}</button>`;
+  const grpBtns=['all','AMC','O&M'].map(g=>btn(g,f.grp,'grp')).join('');
+  const yearBtns=['all',...years.map(String)].map(y=>btn(y,f.year,'year')).join('');
+  // Month values are '1'-'12' as strings, matching _acRenewalsBody's expectations — display label is the short month name
+  const monthBtns=['all',...MONTHS.map((_,i)=>String(i+1))].map((v,i)=>btn(v,f.month,'month',i===0?'All':MONTHS[i-1])).join('');
+  const statusBtns=[
+    {v:'open',label:'Pending',bg:'#f97316',color:'#fff'},
+    {v:'closed',label:'Renewed',bg:'#fff',color:'#16a34a'},
+    {v:'all',label:'All',bg:'#fff',color:'#64748b'},
+  ].map(s=>`<button onclick="_AC.f[0].status='${s.v}';renderRenewalsOnly(document.getElementById('mainContent'))" style="padding:5px 14px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid ${f.status===s.v?'#7c3aed':'#e2e8f0'};background:${f.status===s.v?s.bg:'#fff'};color:${f.status===s.v?s.color:'#64748b'}">${s.label}</button>`).join('');
+  const body=_acRenewalsBody();
+  mc.innerHTML=`<div style="padding:16px 20px;max-width:1200px;margin:0 auto">
+    <div style="margin-bottom:14px">
+      <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px">🔄 Contract Renewals</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:1px">AMC · O&amp;M — Pending &amp; Renewed</div>
+    </div>
+    <div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:10px;padding:10px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
+        <div style="display:flex;gap:4px">${grpBtns}</div>
+      </div>
+      <div style="width:1px;height:28px;background:#ddd6fe;flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Year</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${yearBtns}</div>
+      </div>
+      <div style="width:1px;height:28px;background:#ddd6fe;flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Month</span>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">${monthBtns}</div>
+      </div>
+      <div style="width:1px;height:28px;background:#ddd6fe;flex-shrink:0"></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Status</span>
+        <div style="display:flex;gap:6px">${statusBtns}</div>
+      </div>
+    </div>
+    ${body}
   </div>`;
 }
 
