@@ -473,9 +473,11 @@ let dataLoaded = false;
 function parseCSV(text) {
   const lines = text.trim().split('\n');
   // Keep original header names (some have space prefix like ' Invoice Amount')
-  // Also strip BOM character if present
+  // Also strip BOM character if present. Strip \r from both ends \u2014 CRLF-exported
+  // sheets leave a trailing \r stuck to the *last* column's header name (e.g.
+  // "Status\r"), which silently breaks every r['Status'] lookup on that column.
   const rawHdr = lines[0].replace(/^\uFEFF/,'');
-  const headers = rawHdr.split(',').map(h => h.replace(/^"|"$/g,'').replace(/^\r/,''));
+  const headers = rawHdr.split(',').map(h => h.replace(/^"|"$/g,'').replace(/^\r|\r$/g,''));
   return lines.slice(1).map(line => {
     const vals = [];
     let cur = '', inQ = false;
@@ -3957,7 +3959,7 @@ function _acEmpty(title, sub){
     <div style="font-size:11px">${sub}</div>
   </div>`;
 }
-// Banner used above each split table when Till Month is active (This Month vs Backlog)
+// Banner used above each split table when Till Month is active (This Month vs Overdue)
 function _acSectionBanner(text, count, totalTxt, bg, col){
   return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:7px;margin-bottom:8px;font-size:11px;font-weight:600;background:${bg};color:${col};border:1px solid ${col}55">
     <span>${text}</span>
@@ -4087,8 +4089,8 @@ function _acRenewalsBody(){
       ${_acSectionBanner('📅 This Month — Expiring in Selected Month', curRows.length, _acFmt(curVal), '#dbeafe', '#1e40af')}
       ${curRows.length ? buildTable(curRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No contracts</div>`}
       <div style="height:14px"></div>
-      ${_acSectionBanner('⏳ Backlog — End Date Before Selected Month', backRows.length, _acFmt(backVal), '#fef9c3', '#92400e')}
-      ${backRows.length ? buildTable(backRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No backlog contracts</div>`}
+      ${_acSectionBanner('⏳ Overdue — End Date Before Selected Month', backRows.length, _acFmt(backVal), '#fef9c3', '#92400e')}
+      ${backRows.length ? buildTable(backRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No overdue contracts</div>`}
       <p style="font-size:10px;color:#94a3b8;margin-top:8px">ℹ️ Set Status to <em>Closed</em> or <em>Renewed</em> in the sheet to remove a contract from the Open list.</p>
     </div>`;
   }
@@ -4250,8 +4252,8 @@ function _acInvoicesBody(){
       ${_acSectionBanner('📅 This Month', curRows.length, 'Gap: '+_acFmt(curGap), '#dbeafe', '#1e40af')}
       ${curRows.length ? buildStats(curRows)+buildTable(curRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No items</div>`}
       <div style="height:14px"></div>
-      ${_acSectionBanner('⏳ Backlog — Plan Date Before Selected Month', backRows.length, 'Gap: '+_acFmt(backGap), '#fef9c3', '#92400e')}
-      ${backRows.length ? buildStats(backRows)+buildTable(backRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No backlog items</div>`}
+      ${_acSectionBanner('⏳ Overdue — Plan Date Before Selected Month', backRows.length, 'Gap: '+_acFmt(backGap), '#fef9c3', '#92400e')}
+      ${backRows.length ? buildStats(backRows)+buildTable(backRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No overdue items</div>`}
     </div>`;
   }
 
@@ -4409,8 +4411,8 @@ function _acPaymentsBody(){
       ${_acSectionBanner('📅 This Month — Due in Selected Month', curRows.length, 'Outstanding: '+_acFmt(curOut), '#dbeafe', '#1e40af')}
       ${curRows.length ? buildStats(curRows)+buildTable(curRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No items</div>`}
       <div style="height:14px"></div>
-      ${_acSectionBanner('🔴 Backlog — Overdue From Before Selected Month', backRows.length, 'Outstanding: '+_acFmt(backOut), '#fee2e2', '#991b1b')}
-      ${backRows.length ? buildStats(backRows)+buildTable(backRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No backlog items</div>`}
+      ${_acSectionBanner('🔴 Overdue — From Before Selected Month', backRows.length, 'Outstanding: '+_acFmt(backOut), '#fee2e2', '#991b1b')}
+      ${backRows.length ? buildStats(backRows)+buildTable(backRows) : `<div style="text-align:center;padding:18px;color:#94a3b8;font-size:12px">No overdue items</div>`}
     </div>`;
   }
 
@@ -4422,7 +4424,7 @@ function _acPaymentsBody(){
 
 /* ══════════════════════════════════════════
    TAB 3: CASH INFLOW — projected receivables by time bucket
-   Columns: Backlog | W1..W4 (rest of this month) | next 5 months
+   Columns: Overdue | W1..W4 (rest of this month) | next 5 months
    Rows:    Group (expand) → Client → Invoice
    Note: our INV_DATA has no per-invoice "project" field (only SALES_DATA
    does), so this groups Group → Client → Invoice rather than the 4-level
@@ -4595,7 +4597,7 @@ function _acCashInflowBody(){
   return `<div style="display:flex;flex-direction:column;height:100%">
     <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-bottom:none;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;flex-shrink:0;border-radius:10px 10px 0 0">
       <div>
-        <div style="color:#991b1b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">📌 Backlog — Overdue receivables (up to yesterday)</div>
+        <div style="color:#991b1b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px">📌 Overdue Receivables (up to yesterday)</div>
         <div style="color:#991b1b;font-size:18px;font-weight:800;font-family:'Courier New',monospace;margin-top:2px">
           AED ${fmt(grandBl)} &nbsp;<span style="font-size:11px;font-weight:400;color:#b91c1c;opacity:.8">${fc?'(incl. forecast)':'invoiced only'}</span>
         </div>
@@ -4614,7 +4616,7 @@ function _acCashInflowBody(){
         <thead style="position:sticky;top:0;z-index:3">
           <tr style="background:linear-gradient(135deg,#003366,#065f46)">
             <th ${thFixed}>Group / Client / Invoice</th>
-            <th ${thStyle} style="color:#fca5a5;padding:8px 8px;text-align:right;font-size:10px;font-weight:700;background:#7f1d1d;white-space:nowrap;border-left:2px solid rgba(255,255,255,.2)">🚨 Backlog</th>
+            <th ${thStyle} style="color:#fca5a5;padding:8px 8px;text-align:right;font-size:10px;font-weight:700;background:#7f1d1d;white-space:nowrap;border-left:2px solid rgba(255,255,255,.2)">🚨 Overdue</th>
             ${cols.map(c=>`<th ${thStyle} style="${c.isCurr?'background:rgba(255,255,255,.1)':''}">
               <div>${c.label}</div>
               ${c.sub?`<div style="font-size:8px;opacity:.7">${c.sub}</div>`:''}
@@ -4718,7 +4720,7 @@ function renderActionCentre(mc){
 
   const tillActive = f.month!=='all' && f.till;
   const tillBtn = `<button onclick="_acToggleTill()"
-    title="${f.month==='all'?'Select a specific month first to use Till Month':'Split results into This Month vs Backlog (Jan up to selected month)'}"
+    title="${f.month==='all'?'Select a specific month first to use Till Month':'Split results into This Month vs Overdue (Jan up to selected month)'}"
     style="background:${tillActive?'#0891b2':'#fff'};color:${tillActive?'#fff':'#0891b2'};
            border:2px solid #0891b2;border-radius:7px;padding:4px 11px;font-size:11px;font-weight:700;
            cursor:${f.month==='all'?'not-allowed':'pointer'};opacity:${f.month==='all'?'0.4':'1'};white-space:nowrap"
@@ -4921,9 +4923,10 @@ function _smThreeYearBody(){
 
 /* ── TAB 1: ORDER PIPELINE — real funnel, from the dedicated Pipeline sheet ──
    Stages come from the sheet's own Status column: blank = quoted and awaiting
-   a response, "Under Client Approval" = in review, "Client Approved" = won,
-   "Client not approved" = lost. Client capitalization is inconsistent in the
-   sheet ("Client approved" vs "Client Approved"), so matching is case-insensitive. */
+   a response, "Client Review" = in review, "Won" = approved, "Lost" = declined.
+   Matching is case-insensitive and also recognizes the sheet's earlier wording
+   ("Under Client Approval", "Client Approved", "Client not approved") in case
+   older rows or a future edit reuse that phrasing instead of the short form. */
 const _SM_STAGES=['Under Proposal','Client Review','Won','Lost'];
 const _SM_STAGE_COLORS={
   'Under Proposal':{bg:'#fef3c7',color:'#d97706'},
@@ -4934,6 +4937,9 @@ const _SM_STAGE_COLORS={
 function _smNormStage(s){
   s=(s||'').trim().toLowerCase();
   if(!s) return 'Under Proposal';
+  if(s==='won') return 'Won';
+  if(s==='lost') return 'Lost';
+  if(s.includes('review')) return 'Client Review';
   if(s.includes('under') && s.includes('approval')) return 'Client Review';
   if(s.includes('not approved')) return 'Lost';
   if(s.includes('approved')) return 'Won';
