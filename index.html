@@ -318,8 +318,8 @@ const NAV_GROUPS = [
    ]},
   {id:'ng-fin',  label:'Finance',    icon:'💰', color:'#059669',
    items:[
-     {label:'Upcoming Invoices',        slide:'s-action', acTab:1},
-     {label:'Upcoming Payments',        slide:'s-action', acTab:2},
+     {label:'Invoice Tracking',         slide:'s-action', acTab:1},
+     {label:'Payment Tracking',         slide:'s-action', acTab:2},
      {label:'Cash Inflow',              slide:'s-action', acTab:3},
      {label:'R&C Overview',             slide:'s-inv-pay',  more:true},
      {label:'AR & Recovery',            slide:'s-rec',      more:true},
@@ -3946,7 +3946,7 @@ function toggleAllPTGroups(){
 
 /* ══════════════════════════════════════════
    SLIDE 11: ACTION CENTRE — 3-TAB VIEW
-   Tab 0: Contract Renewals · Tab 1: Upcoming Invoices · Tab 2: Upcoming Payments
+   Tab 0: Contract Renewals · Tab 1: Invoice Tracking · Tab 2: Payment Tracking
 ══════════════════════════════════════════ */
 function _acFmt(v){if(!v&&v!==0)return '–';if(v>=1000000)return 'AED '+(v/1000000).toFixed(2)+'M';if(v>=1000)return 'AED '+(v/1000).toFixed(1)+'K';return 'AED '+Math.round(v).toLocaleString();}
 function _acDate(d){if(!d)return '–';try{return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
@@ -4640,8 +4640,8 @@ function _acCashInflowBody(){
 function renderActionCentre(mc){
   const TAB_CFG=[
     {icon:'🔄', label:'Contract Renewals', color:'#7c3aed', light:'#f5f3ff', border:'#c4b5fd'},
-    {icon:'📋', label:'Upcoming Invoices',  color:'#0057a0', light:'#eff6ff', border:'#93c5fd'},
-    {icon:'💰', label:'Upcoming Payments',  color:'#dc2626', light:'#fff1f2', border:'#fca5a5'},
+    {icon:'📋', label:'Invoice Tracking',   color:'#0057a0', light:'#eff6ff', border:'#93c5fd'},
+    {icon:'💰', label:'Payment Tracking',   color:'#dc2626', light:'#fff1f2', border:'#fca5a5'},
     {icon:'📊', label:'Cash Inflow',        color:'#059669', light:'#ecfdf5', border:'#6ee7b7'},
   ];
   const t  = _AC.tab;
