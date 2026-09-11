@@ -387,7 +387,7 @@ const _SM = {
   tab: 0,
   f: [
     { grp:'all', expanded:[] },                 // Sales History
-    { status:'all', grp:'all', expanded:[] },   // Order Pipeline
+    { status:'all', expanded:[] },   // Order Pipeline — grouped by client, no Group column in this sheet
   ]
 };
 
@@ -420,7 +420,8 @@ const INV_PUB_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQifc18Sj
 const SALES_PUB_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQm2xv8LInfyitwBt14bUtQBPSnKzoJRcns5umht6oEmC_X7StX5_9D06pqurpBWjNe6Yc6nHQRYZmd/pub?gid=412702087&single=true&output=csv';
 const GAS_PROXY    = 'https://script.google.com/macros/s/AKfycby5TMVM1Zn-6LrAvlRPOMfWdEaFw2ixdWaznklk9BQw0pDVKuQZzscTcnt83G9Xy2MP/exec'; // Apps Script proxy — bypasses CORS
 const GS_SITE_PUB  = 'https://docs.google.com/spreadsheets/d/1u1n1HZEGMcv0QIgumR1kuj_cUtDQ-dez6erEjhAeqeA/export?format=csv&gid=1264035629'; // Slide 6 Site Report
-let SITE_DATA=[],HIGHLIGHT_DATA=[];
+const GS_PIPELINE_PUB = 'https://docs.google.com/spreadsheets/d/1u1n1HZEGMcv0QIgumR1kuj_cUtDQ-dez6erEjhAeqeA/export?format=csv&gid=2000275936'; // Slide 12 Order Pipeline (same workbook as Site Report, separate tab)
+let SITE_DATA=[],HIGHLIGHT_DATA=[],PIPELINE_DATA=[];
 
 // Multiple URL formats — browser tries each until one works
 function getSheetURLs(sheetId, gid='') {
@@ -540,6 +541,48 @@ async function loadSiteReport() {
   }catch(e){console.warn('Site report fetch failed:',e.message);}
 }
 
+// The Pipeline sheet mixes two date formats in the same column: "9-Jan-2026"
+// (month name — parses fine with `new Date()`) and "20-04-2026" (numeric
+// DD-MM-YYYY — `new Date()` misreads or rejects it). Handle both explicitly.
+function _pipeParseDate(v){
+  if(!v) return null;
+  v = String(v).trim();
+  if(!v) return null;
+  const numeric = v.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(numeric){
+    const day=+numeric[1], mon=+numeric[2], yr=+numeric[3];
+    const d = new Date(yr, mon-1, day);
+    return isNaN(d) ? null : d.toISOString().slice(0,10);
+  }
+  const d = new Date(v);
+  return isNaN(d) ? null : d.toISOString().slice(0,10);
+}
+
+async function loadPipeline() {
+  if(!GS_PIPELINE_PUB) return;
+  try{
+    const pipeText=await fetchWithCORS([GS_PIPELINE_PUB,'https://api.codetabs.com/v1/proxy?quest='+GS_PIPELINE_PUB]);
+    if(pipeText){
+      // Columns: Date, Client, Quotation/Job #, Scope of Work, Amount, Status
+      const rows=parseCSV(pipeText);
+      PIPELINE_DATA.length=0;
+      rows.forEach(r=>{
+        const client=(r['Client']||'').trim();
+        if(!client) return;
+        PIPELINE_DATA.push({
+          date:    _pipeParseDate(r['Date']),
+          client,
+          jobNum:  (r['Quotation/Job #']||'').trim(),
+          scope:   (r['Scope of Work']||'').trim(),
+          amount:  cleanNum(r['Amount']),
+          status:  (r['Status']||'').trim(),
+        });
+      });
+      if(activeSlide==='s-sales-mon') renderActive();
+    }
+  }catch(e){console.warn('Pipeline fetch failed:',e.message);}
+}
+
 async function fetchLiveData() {
   const statusEl = document.getElementById('liveStatus');
   try {
@@ -553,9 +596,11 @@ async function fetchLiveData() {
       return n > 0 && n <= 1 ? Math.round(n*100) : Math.round(n);
     }
 
-    // Kick off Site Report fetch concurrently — it doesn't depend on Invoice/Sales
-    // and was previously only started after both finished, adding dead wait time.
+    // Kick off Site Report + Pipeline fetches concurrently — neither depends on
+    // Invoice/Sales and was previously only started after both finished, adding
+    // dead wait time.
     const sitePromise = loadSiteReport();
+    const pipelinePromise = loadPipeline();
 
     // Fetch Invoice & Payments
     try {
@@ -671,6 +716,7 @@ async function fetchLiveData() {
     dataLoaded = true;
 
     await sitePromise;
+    await pipelinePromise;
 
   } catch(e) {
     console.warn('Live fetch failed, using embedded data:', e.message);
@@ -4840,6 +4886,18 @@ function _smThreeYearBody(){
   const hdr2=YEARS.map(y=>`<th colspan="3" style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;border-right:2px solid rgba(255,255,255,.3)">${y}</th>`).join('');
   const hdr3=YEARS.map(()=>`<th style="padding:6px 10px;text-align:center;font-size:10px;border-right:1px solid rgba(255,255,255,.2)">Orders #</th><th style="padding:6px 10px;text-align:right;font-size:10px;border-right:1px solid rgba(255,255,255,.2)">Order Value</th><th style="padding:6px 10px;text-align:right;font-size:10px;border-right:2px solid rgba(255,255,255,.3)">Inv Planned</th>`).join('');
 
+  // TOTAL row — sums across whichever groups the Group filter currently shows
+  const totalCols=YEARS.map(y=>{
+    const ys=SALES_DATA.filter(r=>displayGrps.includes(r.group) && r.salesYear===y);
+    const yi=INV_DATA.filter(r=>{
+      const g=clGrpMap[(r.cl||'').toLowerCase()];
+      if(!displayGrps.includes(g)) return false;
+      const d=r.invPlanDate;
+      return d && new Date(d).getFullYear()===y;
+    });
+    return `<td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:800;border-right:1px solid #cbd5e1">${ys.length||'—'}</td><td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:800;border-right:1px solid #cbd5e1">AED ${fk(ys.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border-right:2px solid #94a3b8">AED ${fk(yi.reduce((s,r)=>s+(r.iAmt||0),0))}</td>`;
+  }).join('');
+
   return `<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
     <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
     ${grpBtns}
@@ -4851,68 +4909,63 @@ function _smThreeYearBody(){
         <tr style="background:#047857;color:#fff"><th></th>${hdr3}</tr>
       </thead>
       <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:24px;color:#94a3b8">No data</td></tr>'}</tbody>
+      <tfoot style="position:sticky;bottom:0">
+        <tr style="background:#a7f3d0;border-top:2px solid #059669">
+          <td style="padding:9px 12px;font-size:12px;font-weight:800;color:#064e3b">TOTAL${f.grp!=='all'?' — '+f.grp:''}</td>
+          ${totalCols}
+        </tr>
+      </tfoot>
     </table>
   </div>`;
 }
 
-/* ── TAB 1: ORDER PIPELINE — grouped by our real order-lifecycle stages ──
-   (Adapted from a reference design that used a Won/Lost sales-pipeline vocabulary
-   our sheet doesn't have; ours groups by the actual Status values in use today.) */
-const _SM_STAGES=['Open','In Progress','Payment','To Invoice','On Hold','Closed','Cancelled','Other'];
+/* ── TAB 1: ORDER PIPELINE — real funnel, from the dedicated Pipeline sheet ──
+   Stages come from the sheet's own Status column: blank = quoted and awaiting
+   a response, "Under Client Approval" = in review, "Client Approved" = won,
+   "Client not approved" = lost. Client capitalization is inconsistent in the
+   sheet ("Client approved" vs "Client Approved"), so matching is case-insensitive. */
+const _SM_STAGES=['Under Proposal','Client Review','Won','Lost'];
 const _SM_STAGE_COLORS={
-  'Open':{bg:'#fef3c7',color:'#d97706'},
-  'In Progress':{bg:'#dbeafe',color:'#0057a0'},
-  'Payment':{bg:'#e0f2fe',color:'#0891b2'},
-  'To Invoice':{bg:'#ede9fe',color:'#7c3aed'},
-  'On Hold':{bg:'#f1f5f9',color:'#64748b'},
-  'Closed':{bg:'#dcfce7',color:'#16a34a'},
-  'Cancelled':{bg:'#fee2e2',color:'#dc2626'},
-  'Other':{bg:'#f5f5f4',color:'#78716c'},
+  'Under Proposal':{bg:'#fef3c7',color:'#d97706'},
+  'Client Review':  {bg:'#dbeafe',color:'#0057a0'},
+  'Won':            {bg:'#dcfce7',color:'#16a34a'},
+  'Lost':           {bg:'#fee2e2',color:'#dc2626'},
 };
 function _smNormStage(s){
-  s=(s||'').trim();
-  if(/^in ?progress$/i.test(s)) return 'In Progress';
-  if(/^on ?hold$/i.test(s)) return 'On Hold';
-  if(/^to invoice$/i.test(s)) return 'To Invoice';
-  if(s==='Payment') return 'Payment';
-  if(s==='Open') return 'Open';
-  if(s==='Closed') return 'Closed';
-  if(s==='Cancelled') return 'Cancelled';
-  if(!s) return null; // blank status — not a real pipeline row
-  return 'Other';
+  s=(s||'').trim().toLowerCase();
+  if(!s) return 'Under Proposal';
+  if(s.includes('under') && s.includes('approval')) return 'Client Review';
+  if(s.includes('not approved')) return 'Lost';
+  if(s.includes('approved')) return 'Won';
+  return 'Under Proposal';
 }
 
 function _smPipelineBody(){
   const f=_SM.f[1];
   const fk=v=>v>=1e6?'AED '+(v/1e6).toFixed(2)+'M':v>=1000?'AED '+(v/1000).toFixed(1)+'K':'AED '+(v||0).toFixed(0);
+  const fd=d=>{ if(!d) return '—'; try{ return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return d; } };
   const SC=_SM_STAGE_COLORS;
 
-  let data=SALES_DATA.filter(r=>_smNormStage(r.status)!==null);
+  if(!PIPELINE_DATA.length) return _acEmpty('No pipeline data loaded','Check that the Pipeline sheet tab is published to web, or click Refresh Data.');
+
+  let data=PIPELINE_DATA.slice();
   if(f.status!=='all') data=data.filter(r=>_smNormStage(r.status)===f.status);
-  if(f.grp!=='all') data=data.filter(r=>r.group===f.grp);
-  const totalVal=data.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0);
+  const totalVal=data.reduce((s,r)=>s+r.amount,0);
 
   const stageBtns=['all',..._SM_STAGES].map(s=>{
     const active=f.status===s; const sc=SC[s]||{bg:'#7c3aed',color:'#fff'};
     return `<button onclick="_smSetF(1,'status','${s}')" style="padding:4px 12px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${active?(s==='all'?'#7c3aed':sc.color):'#e2e8f0'};background:${active?(s==='all'?'#7c3aed':sc.bg):'#fff'};color:${active?(s==='all'?'#fff':sc.color):'#64748b'}">${s==='all'?'All Stages':s}</button>`;
   }).join('');
-  const grpBtns=['all',...GROUPS].map(g=>`<button onclick="_smSetF(1,'grp','${g}')" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${f.grp===g?'#7c3aed':'#e2e8f0'};background:${f.grp===g?'#7c3aed':'#fff'};color:${f.grp===g?'#fff':'#64748b'}">${g==='all'?'All':g}</button>`).join('');
 
-  const grpMap={};
-  data.forEach(r=>{ if(!grpMap[r.group]) grpMap[r.group]=[]; grpMap[r.group].push(r); });
-  const grpRows=Object.entries(grpMap).map(([g,rows])=>{
-    const isExp=f.expanded.includes(g);
-    const clientMap={};
-    rows.forEach(r=>{ if(!clientMap[r.client]) clientMap[r.client]=[]; clientMap[r.client].push(r); });
-    const clientRows=isExp?Object.entries(clientMap).map(([cl,projs])=>{
-      const clKey=g+'|'+cl; const clExp=f.expanded.includes(clKey);
-      const projRows=clExp?projs.map(p=>{
-        const ns=_smNormStage(p.status); const sc=SC[ns]||{bg:'#f1f5f9',color:'#64748b'};
-        return `<tr style="background:#fafafa"><td style="padding:4px 8px 4px 72px;font-size:11px;color:#64748b">${p.proj||'—'}</td><td style="padding:4px 8px;font-size:11px;color:#64748b">${(p.desc||'').slice(0,60)||'—'}</td><td style="padding:4px 8px;text-align:right;font-size:11px">${fk(p.orderValTax||p.orderVal||0)}</td><td style="padding:4px 8px;text-align:center"><span style="background:${sc.bg};color:${sc.color};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${ns}</span></td><td style="padding:4px 8px;text-align:center;font-size:11px">${p.salesYear||'—'}</td></tr>`;
-      }).join(''):'';
-      return `<tr style="background:#f5f3ff;cursor:pointer" onclick="_smToggle(1,'${clKey.replace(/'/g,"\\'")}')"><td style="padding:5px 8px 5px 36px;font-size:11px;font-weight:600;color:#1e293b">${clExp?'▼':'▶'} ${cl}</td><td style="padding:5px 8px;font-size:11px;color:#64748b">${projs.length} order${projs.length!==1?'s':''}</td><td style="padding:5px 8px;text-align:right;font-size:11px;font-weight:600">${fk(projs.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td colspan="2"></td></tr>${projRows}`;
+  const clientMap={};
+  data.forEach(r=>{ if(!clientMap[r.client]) clientMap[r.client]=[]; clientMap[r.client].push(r); });
+  const clientRows=Object.entries(clientMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([cl,jobs])=>{
+    const clExp=f.expanded.includes(cl);
+    const jobRows=clExp?jobs.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(j=>{
+      const ns=_smNormStage(j.status); const sc=SC[ns]||{bg:'#f1f5f9',color:'#64748b'};
+      return `<tr style="background:#fafafa"><td style="padding:4px 8px 4px 48px;font-size:10.5px;color:#64748b">${j.jobNum||'—'}</td><td style="padding:4px 8px;font-size:10.5px;color:#64748b;white-space:nowrap">${fd(j.date)}</td><td style="padding:4px 8px;font-size:11px;color:#374151">${j.scope||'—'}</td><td style="padding:4px 8px;text-align:right;font-size:11px">${j.amount>0?fk(j.amount):'—'}</td><td style="padding:4px 8px;text-align:center"><span style="background:${sc.bg};color:${sc.color};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700">${ns}</span></td></tr>`;
     }).join(''):'';
-    return `<tr style="background:#ede9fe;cursor:pointer" onclick="_smToggle(1,'${g}')"><td style="padding:8px 12px;font-size:12px;font-weight:800;color:#0f172a">${isExp?'▼':'▶'} ${g}</td><td style="padding:8px 12px;font-size:12px;color:#64748b">${rows.length} orders</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-weight:700">${fk(rows.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td colspan="2"></td></tr>${clientRows}`;
+    return `<tr style="background:#f5f3ff;cursor:pointer" onclick="_smToggle(1,'${cl.replace(/'/g,"\\'")}')"><td colspan="2" style="padding:8px 12px;font-size:12px;font-weight:700;color:#1e293b">${clExp?'▼':'▶'} ${cl}</td><td style="padding:8px 12px;font-size:11px;color:#64748b">${jobs.length} item${jobs.length!==1?'s':''}</td><td style="padding:8px 12px;text-align:right;font-size:12px;font-weight:700">${fk(jobs.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr>${jobRows}`;
   }).join('');
 
   return `<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;align-items:center">
@@ -4920,23 +4973,17 @@ function _smPipelineBody(){
       <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Stage</span>
       ${stageBtns}
     </div>
-    <div style="width:1px;height:28px;background:#ddd6fe;flex-shrink:0"></div>
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">Group</span>
-      ${grpBtns}
-    </div>
   </div>
-  <div style="font-size:12px;color:#64748b;margin-bottom:8px">${data.length} orders &nbsp;·&nbsp; Total Value: <strong>${fk(totalVal)}</strong></div>
+  <div style="font-size:12px;color:#64748b;margin-bottom:8px">${data.length} item${data.length!==1?'s':''} &nbsp;·&nbsp; Total Value: <strong>${fk(totalVal)}</strong></div>
   <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;overflow:auto;max-height:480px">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr style="background:#7c3aed;color:#fff;position:sticky;top:0">
-        <th style="padding:10px 12px;text-align:left;font-size:11px">Group / Client / Project</th>
-        <th style="padding:10px 12px;text-align:left;font-size:11px">Description</th>
-        <th style="padding:10px 12px;text-align:right;font-size:11px">Value</th>
+        <th style="padding:10px 12px;text-align:left;font-size:11px" colspan="2">Client / Job #</th>
+        <th style="padding:10px 12px;text-align:left;font-size:11px">Date / Scope of Work</th>
+        <th style="padding:10px 12px;text-align:right;font-size:11px">Amount</th>
         <th style="padding:10px 12px;text-align:center;font-size:11px">Stage</th>
-        <th style="padding:10px 12px;text-align:center;font-size:11px">Year</th>
       </tr></thead>
-      <tbody>${grpRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8">No orders match this filter</td></tr>'}</tbody>
+      <tbody>${clientRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8">No pipeline items match this filter</td></tr>'}</tbody>
     </table>
   </div>`;
 }
