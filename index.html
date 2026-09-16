@@ -4850,6 +4850,15 @@ function _smToggle(tabIdx, key){
 }
 
 /* ── TAB 0: SALES HISTORY — 3-year Orders/Value/Invoice-Planned comparison ── */
+// Year-over-year trend badge: green ▲ up, red ▼ down, grey ● flat (within 1%)
+function _smTrend(cur, prev){
+  if(prev==null) return '';
+  if(!prev) return cur>0?'<span style="color:#059669;font-size:9px;font-weight:800;margin-left:5px;white-space:nowrap">▲ New</span>':'';
+  const pct=(cur-prev)/prev*100;
+  if(Math.abs(pct)<1) return '<span style="color:#94a3b8;font-size:9px;font-weight:800;margin-left:5px;white-space:nowrap">● Flat</span>';
+  const up=pct>0;
+  return `<span style="color:${up?'#059669':'#dc2626'};font-size:9px;font-weight:800;margin-left:5px;white-space:nowrap">${up?'▲':'▼'} ${Math.abs(pct).toFixed(0)}%</span>`;
+}
 function _smThreeYearBody(){
   const f=_SM.f[0];
   const fk=v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v>0?v.toFixed(0):'—';
@@ -4866,19 +4875,27 @@ function _smThreeYearBody(){
     const isExp=f.expanded.includes(g);
     const grpSales=SALES_DATA.filter(r=>r.group===g);
     const grpInv=INV_DATA.filter(r=>clGrpMap[(r.cl||'').toLowerCase()]===g);
-    const yearCols=YEARS.map(y=>{
+    const yearVals=YEARS.map(y=>{
       const ys=grpSales.filter(r=>r.salesYear===y);
       const yi=grpInv.filter(r=>{const d=r.invPlanDate;return d&&new Date(d).getFullYear()===y;});
-      return `<td style="padding:8px 10px;text-align:center;font-size:12px;font-weight:700;border-right:1px solid #e2e8f0">${ys.length||'—'}</td><td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;border-right:1px solid #e2e8f0">AED ${fk(ys.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td style="padding:8px 10px;text-align:right;font-size:12px;color:#059669;border-right:2px solid #cbd5e1">AED ${fk(yi.reduce((s,r)=>s+(r.iAmt||0),0))}</td>`;
+      return {cnt:ys.length, val:ys.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0), inv:yi.reduce((s,r)=>s+(r.iAmt||0),0)};
+    });
+    const yearCols=yearVals.map((d,i)=>{
+      const trend=_smTrend(d.val, i>0?yearVals[i-1].val:null);
+      return `<td style="padding:8px 10px;text-align:center;font-size:12px;font-weight:700;border-right:1px solid #e2e8f0">${d.cnt||'—'}</td><td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:700;border-right:1px solid #e2e8f0">AED ${fk(d.val)}${trend}</td><td style="padding:8px 10px;text-align:right;font-size:12px;color:#059669;border-right:2px solid #cbd5e1">AED ${fk(d.inv)}</td>`;
     }).join('');
     const clientMap={};
     grpSales.forEach(r=>{ if(!clientMap[r.client]) clientMap[r.client]=[]; clientMap[r.client].push(r); });
     const clientRows=isExp?Object.entries(clientMap).map(([cl,projs])=>{
       const clInv=INV_DATA.filter(r=>(r.cl||'').toLowerCase()===cl.toLowerCase());
-      const cy=YEARS.map(y=>{
+      const cyVals=YEARS.map(y=>{
         const yp=projs.filter(p=>p.salesYear===y);
         const yi=clInv.filter(r=>{const d=r.invPlanDate;return d&&new Date(d).getFullYear()===y;});
-        return `<td style="padding:5px 10px;text-align:center;font-size:11px;border-right:1px solid #f1f5f9">${yp.length||'—'}</td><td style="padding:5px 10px;text-align:right;font-size:11px;border-right:1px solid #f1f5f9">AED ${fk(yp.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td style="padding:5px 10px;text-align:right;font-size:11px;color:#059669;border-right:2px solid #e2e8f0">AED ${fk(yi.reduce((s,r)=>s+(r.iAmt||0),0))}</td>`;
+        return {cnt:yp.length, val:yp.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0), inv:yi.reduce((s,r)=>s+(r.iAmt||0),0)};
+      });
+      const cy=cyVals.map((d,i)=>{
+        const trend=_smTrend(d.val, i>0?cyVals[i-1].val:null);
+        return `<td style="padding:5px 10px;text-align:center;font-size:11px;border-right:1px solid #f1f5f9">${d.cnt||'—'}</td><td style="padding:5px 10px;text-align:right;font-size:11px;border-right:1px solid #f1f5f9">AED ${fk(d.val)}${trend}</td><td style="padding:5px 10px;text-align:right;font-size:11px;color:#059669;border-right:2px solid #e2e8f0">AED ${fk(d.inv)}</td>`;
       }).join('');
       return `<tr style="background:#f8fafc"><td style="padding:5px 8px 5px 32px;font-size:11px;color:#334155">${cl}</td>${cy}</tr>`;
     }).join(''):'';
@@ -4889,7 +4906,7 @@ function _smThreeYearBody(){
   const hdr3=YEARS.map(()=>`<th style="padding:6px 10px;text-align:center;font-size:10px;border-right:1px solid rgba(255,255,255,.2)">Orders #</th><th style="padding:6px 10px;text-align:right;font-size:10px;border-right:1px solid rgba(255,255,255,.2)">Order Value</th><th style="padding:6px 10px;text-align:right;font-size:10px;border-right:2px solid rgba(255,255,255,.3)">Inv Planned</th>`).join('');
 
   // TOTAL row — sums across whichever groups the Group filter currently shows
-  const totalCols=YEARS.map(y=>{
+  const totalVals=YEARS.map(y=>{
     const ys=SALES_DATA.filter(r=>displayGrps.includes(r.group) && r.salesYear===y);
     const yi=INV_DATA.filter(r=>{
       const g=clGrpMap[(r.cl||'').toLowerCase()];
@@ -4897,7 +4914,11 @@ function _smThreeYearBody(){
       const d=r.invPlanDate;
       return d && new Date(d).getFullYear()===y;
     });
-    return `<td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:800;border-right:1px solid #cbd5e1">${ys.length||'—'}</td><td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:800;border-right:1px solid #cbd5e1">AED ${fk(ys.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0))}</td><td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border-right:2px solid #94a3b8">AED ${fk(yi.reduce((s,r)=>s+(r.iAmt||0),0))}</td>`;
+    return {cnt:ys.length, val:ys.reduce((s,r)=>s+(r.orderValTax||r.orderVal||0),0), inv:yi.reduce((s,r)=>s+(r.iAmt||0),0)};
+  });
+  const totalCols=totalVals.map((d,i)=>{
+    const trend=_smTrend(d.val, i>0?totalVals[i-1].val:null);
+    return `<td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:800;border-right:1px solid #cbd5e1">${d.cnt||'—'}</td><td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:800;border-right:1px solid #cbd5e1">AED ${fk(d.val)}${trend}</td><td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:800;color:#059669;border-right:2px solid #94a3b8">AED ${fk(d.inv)}</td>`;
   }).join('');
 
   return `<div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
