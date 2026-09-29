@@ -5110,8 +5110,18 @@ function renderTracker(mc){
   // Field Tracker follows the site-visit workflow only — "Client Call" leads
   // skip straight to Order Pipeline (see _pipeInOrderStage) and don't belong here.
   const TRACKER_DATA=PIPELINE_DATA.filter(r=>r.type==='Site Visit');
-  const overdueMsg=row=>{
+  // The sheet's Status column is filled in by hand and often lags reality —
+  // a row can sit at "Site Visit Planned" for days after the SV Done date is
+  // actually entered. Display grouping uses the SV Done date to catch that,
+  // without touching row.status itself (Order Pipeline's gate still needs
+  // the raw status to know a proposal genuinely hasn't gone out yet).
+  const effStage=row=>{
     const s=(row.status||'').trim();
+    if(s==='Site Visit Planned' && row.svCompleted) return 'Visit Completed';
+    return s;
+  };
+  const overdueMsg=row=>{
+    const s=effStage(row);
     if(s==='Site Visit Planned'){ const d=daysSince(row.svPlanned); return d>0?`⚠ SV overdue ${d}d`:null; }
     if(s==='Visit Completed'){ const d=daysSince(row.svCompleted); return d>3&&!row.reportDate?`⚠ Report pending ${d}d`:null; }
     if(s==='Under Proposal'||s==='Quote Submitted'){ const d=daysSince(row.proposalDate||row.date); return d>7?`⚠ Follow-up ${d}d`:null; }
@@ -5169,7 +5179,7 @@ function renderTracker(mc){
     </tr>`;
 
     const stageGroups=STAGES.map(stage=>{
-      const rows=data.filter(r=>r.status===stage.key);
+      const rows=data.filter(r=>effStage(r)===stage.key);
       if(rows.length===0) return '';
       const isExp=_TF.expanded.includes(stage.key);
       const stageVal=rows.reduce((s,r)=>s+r.amount,0);
@@ -5203,10 +5213,13 @@ function renderTracker(mc){
       </tbody>`;
     }).join('');
 
+    const emptyMsg=!TRACKER_DATA.length
+      ? 'No tracker data loaded — check that the Pipeline sheet tab is published to web, or click Refresh Data.'
+      : 'No leads match the current Period / Month / Stage filters — try clearing a filter above.';
     return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:auto;max-height:520px">
       <table style="width:100%;border-collapse:collapse;min-width:900px">
         <thead>${tblHdr}</thead>
-        ${stageGroups||'<tbody><tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">No tracker data loaded</td></tr></tbody>'}
+        ${stageGroups||`<tbody><tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">${emptyMsg}</td></tr></tbody>`}
       </table>
     </div>`;
   };
@@ -5214,7 +5227,7 @@ function renderTracker(mc){
   /* ── KANBAN VIEW ── */
   const kanbanView=(data)=>{
     const cols=STAGES.map(stage=>{
-      const rows=data.filter(r=>r.status===stage.key);
+      const rows=data.filter(r=>effStage(r)===stage.key);
       const cards=rows.map(row=>{
         const od=overdueMsg(row);
         return `<div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid ${od?'#fca5a5':'#e2e8f0'};border-left:3px solid ${stage.color};box-shadow:0 1px 3px rgba(0,0,0,.05)">
@@ -5264,7 +5277,7 @@ function renderTracker(mc){
       const m=String(new Date(refDate).getMonth()+1).padStart(2,'0');
       if(m!==_TF.month) return false;
     }
-    if(_TF.statuses.length>0 && !_TF.statuses.includes(r.status)) return false;
+    if(_TF.statuses.length>0 && !_TF.statuses.includes(effStage(r))) return false;
     return true;
   });
 
@@ -5297,7 +5310,7 @@ function renderTracker(mc){
 
   /* Auto-expand all non-empty stages in list view on first load */
   if(_TF.view==='list' && _TF.expanded.length===0){
-    STAGES.forEach(s=>{ if(TRACKER_DATA.some(r=>r.status===s.key)) _TF.expanded.push(s.key); });
+    STAGES.forEach(s=>{ if(TRACKER_DATA.some(r=>effStage(r)===s.key)) _TF.expanded.push(s.key); });
     if(TRACKER_DATA.length) renderTracker(mc);
   }
 }
