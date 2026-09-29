@@ -290,6 +290,7 @@ const SLIDES = [
   {id:'s-action',   label:'Slide 11 – Action Centre',           toolbar:'none',     subnav:false},
   {id:'s-sales-mon',    label:'Slide 12 – Sales Monitor',       toolbar:'none',     subnav:false},
   {id:'s-renewals-only',label:'Slide 13 – Contract Renewals',   toolbar:'none',     subnav:false},
+  {id:'s-tracker',      label:'Slide 14 – Site & Sales Tracker',toolbar:'none',     subnav:false},
 ];
 
 /* ── GROUPED NAVIGATION ──
@@ -303,6 +304,10 @@ const NAV_GROUPS = [
      {label:'Dashboard',  slide:'s-dashboard'},
      {label:'Cover',      slide:'s-cover'},
      {label:'Guidelines', slide:'s-guide'},
+   ]},
+  {id:'ng-tracker',label:'Field Tracker', icon:'🗺️', color:'#0891b2',
+   items:[
+     {label:'Site & Sales Tracker', slide:'s-tracker'},
    ]},
   {id:'ng-sales',label:'Sales',       icon:'📈', color:'#0057a0',
    items:[
@@ -560,27 +565,57 @@ function _pipeParseDate(v){
   return isNaN(d) ? null : d.toISOString().slice(0,10);
 }
 
+// Finds a column by fuzzy header match (all-lowercase substrings must appear
+// together in one header) — the Pipeline sheet's header text drifts over time
+// (typos, renames), so exact-key lookups silently go blank.
+function _pipeCol(row, substrings){
+  const keys=Object.keys(row);
+  const k=keys.find(h=>{ const hl=h.toLowerCase(); return substrings.every(s=>hl.includes(s)); });
+  return k?row[k]:'';
+}
+
+// A "Client Call" lead has no site-visit workflow, so it enters the Order
+// Pipeline immediately. A "Site Visit" lead sits in the Field Tracker's
+// visit stages until a Proposal Date is set — only then has it become an
+// actual sales opportunity worth counting in Order Pipeline. Status is used
+// as a fallback gate (not just the date field) because some rows reach
+// Won/Lost/Under Proposal without the Proposal Date cell ever being filled in.
+function _pipeInOrderStage(r){
+  if(r.type==='Client Call') return true;
+  if(r.proposalDate) return true;
+  return !['','Site Visit Planned','Visit Completed'].includes(r.status);
+}
+
 async function loadPipeline() {
   if(!GS_PIPELINE_PUB) return;
   try{
     const pipeText=await fetchWithCORS([GS_PIPELINE_PUB,'https://api.codetabs.com/v1/proxy?quest='+GS_PIPELINE_PUB]);
     if(pipeText){
-      // Columns: Date, Client, Quotation/Job #, Scope of Work, Amount, Status
+      // Columns: [Sales Conversion], [Site Visit Planned Date], [Site Visit Completed Date],
+      // [Proposal Date], Client, Quotation/Job #, Scope of Work, Amount, Status
       const rows=parseCSV(pipeText);
       PIPELINE_DATA.length=0;
       rows.forEach(r=>{
         const client=(r['Client']||'').trim();
         if(!client) return;
+        const svPlanned  =_pipeParseDate(_pipeCol(r,['planned','date']));
+        const svCompleted=_pipeParseDate(_pipeCol(r,['completed','date']));
+        const proposalDate=_pipeParseDate(_pipeCol(r,['proposal','date']));
+        const reportDate =_pipeParseDate(_pipeCol(r,['report']));
         PIPELINE_DATA.push({
-          date:    _pipeParseDate(r['Date']),
+          date:    _pipeParseDate(r['Date'])||proposalDate||svCompleted||svPlanned,
           client,
           jobNum:  (r['Quotation/Job #']||'').trim(),
           scope:   (r['Scope of Work']||'').trim(),
           amount:  cleanNum(r['Amount']),
           status:  (r['Status']||'').trim(),
+          type:    (_pipeCol(r,['conversion'])||'').trim(),
+          group:   (_pipeCol(r,['group'])||'').trim(),
+          svPlanned, svCompleted, proposalDate, reportDate,
+          remarks: (_pipeCol(r,['remark'])||_pipeCol(r,['flag'])||'').trim(),
         });
       });
-      if(activeSlide==='s-sales-mon') renderActive();
+      if(activeSlide==='s-sales-mon'||activeSlide==='s-tracker') renderActive();
     }
   }catch(e){console.warn('Pipeline fetch failed:',e.message);}
 }
@@ -1218,6 +1253,7 @@ function renderActive(){
   else if(activeSlide==='s-action')   { renderActionCentre(mc); }
   else if(activeSlide==='s-sales-mon')    { renderSalesMonitor(mc); }
   else if(activeSlide==='s-renewals-only'){ renderRenewalsOnly(mc); }
+  else if(activeSlide==='s-tracker')      { renderTracker(mc); }
 }
 
 /* ── SLIDE 1: COVER ── */
@@ -4975,7 +5011,7 @@ function _smPipelineBody(){
 
   if(!PIPELINE_DATA.length) return _acEmpty('No pipeline data loaded','Check that the Pipeline sheet tab is published to web, or click Refresh Data.');
 
-  let data=PIPELINE_DATA.slice();
+  let data=PIPELINE_DATA.filter(_pipeInOrderStage);
   if(f.status!=='all') data=data.filter(r=>_smNormStage(r.status)===f.status);
   const totalVal=data.reduce((s,r)=>s+r.amount,0);
 
@@ -5013,6 +5049,257 @@ function _smPipelineBody(){
       <tbody>${clientRows||'<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8">No pipeline items match this filter</td></tr>'}</tbody>
     </table>
   </div>`;
+}
+
+/* ══ SITE & SALES TRACKER (Field Tracker) ══
+   Same PIPELINE_DATA feed as Order Pipeline above, but walks the full
+   visit → report → proposal → negotiation → order lifecycle instead of
+   collapsing everything into the four Order Pipeline stages. */
+const _TF = { period: 'month', view: 'list', expanded: [], month: 'all', statuses: [] };
+
+function _tfRange(p){
+  const now=new Date(); now.setHours(23,59,59,999);
+  const s=new Date(); s.setHours(0,0,0,0);
+  if(p==='today'){}
+  else if(p==='week') { s.setDate(s.getDate()-s.getDay()); }
+  else if(p==='month'){ s.setDate(1); }
+  else if(p==='qtr')  { s.setMonth(Math.floor(s.getMonth()/3)*3,1); }
+  else if(p==='year') { s.setMonth(0,1); }
+  else return null;
+  return {s,e:now};
+}
+function _tfIn(dateStr,range){
+  if(!range) return true;
+  if(!dateStr) return false;
+  const d=new Date(dateStr);
+  return d>=range.s && d<=range.e;
+}
+function _tfRefDate(r){ return r.svPlanned||r.svCompleted||r.reportDate||r.proposalDate||r.date; }
+function _tfSet(key,val){ _TF[key]=val; renderTracker(document.getElementById('mainContent')); }
+function _tfToggleStatus(s){
+  const i=_TF.statuses.indexOf(s);
+  if(i>=0) _TF.statuses.splice(i,1); else _TF.statuses.push(s);
+  renderTracker(document.getElementById('mainContent'));
+}
+function _tfToggle(key){
+  const i=_TF.expanded.indexOf(key);
+  if(i>=0) _TF.expanded.splice(i,1); else _TF.expanded.push(key);
+  renderTracker(document.getElementById('mainContent'));
+}
+function _tfClearStatuses(){ _TF.statuses=[]; renderTracker(document.getElementById('mainContent')); }
+
+function renderTracker(mc){
+  const STAGES=[
+    {key:'Site Visit Planned',label:'Visit Planned',   icon:'📅',color:'#0057a0',light:'#dbeafe'},
+    {key:'Visit Completed',   label:'Visit Completed', icon:'✅',color:'#0891b2',light:'#cffafe'},
+    {key:'Report Submitted',  label:'Report Submitted',icon:'📄',color:'#7c3aed',light:'#ede9fe'},
+    {key:'Under Proposal',    label:'U/Proposal',      icon:'📝',color:'#d97706',light:'#fef3c7'},
+    {key:'Quote Submitted',   label:'Quote Submitted', icon:'📤',color:'#ea580c',light:'#ffedd5'},
+    {key:'Client Review',     label:'Client Review',   icon:'🔍',color:'#db2777',light:'#fce7f3'},
+    {key:'Won',                label:'Won',            icon:'🏆',color:'#16a34a',light:'#dcfce7'},
+    {key:'Lost',                label:'Lost',          icon:'❌',color:'#dc2626',light:'#fee2e2'},
+  ];
+  const PERIODS=[
+    {k:'today',l:'Today'},{k:'week',l:'This Week'},{k:'month',l:'This Month'},
+    {k:'qtr',l:'Quarter'},{k:'year',l:'This Year'},{k:'all',l:'All Time'}
+  ];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const range=_tfRange(_TF.period);
+  const fmtD=d=>{ if(!d) return '—'; const x=new Date(d); return x.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}); };
+  const daysSince=d=>{ if(!d) return null; const dt=new Date(d); dt.setHours(0,0,0,0); return Math.floor((today-dt)/86400000); };
+  // Field Tracker follows the site-visit workflow only — "Client Call" leads
+  // skip straight to Order Pipeline (see _pipeInOrderStage) and don't belong here.
+  const TRACKER_DATA=PIPELINE_DATA.filter(r=>r.type==='Site Visit');
+  const overdueMsg=row=>{
+    const s=(row.status||'').trim();
+    if(s==='Site Visit Planned'){ const d=daysSince(row.svPlanned); return d>0?`⚠ SV overdue ${d}d`:null; }
+    if(s==='Visit Completed'){ const d=daysSince(row.svCompleted); return d>3&&!row.reportDate?`⚠ Report pending ${d}d`:null; }
+    if(s==='Under Proposal'||s==='Quote Submitted'){ const d=daysSince(row.proposalDate||row.date); return d>7?`⚠ Follow-up ${d}d`:null; }
+    if(s==='Client Review'){ const d=daysSince(row.proposalDate||row.date); return d>14?`🔴 Urgent ${d}d`:null; }
+    return null;
+  };
+
+  /* KPI counts */
+  const kpi={
+    svPlanned:  TRACKER_DATA.filter(r=>_tfIn(r.svPlanned,range)).length,
+    svCompleted:TRACKER_DATA.filter(r=>_tfIn(r.svCompleted,range)).length,
+    reportOut:  TRACKER_DATA.filter(r=>_tfIn(r.reportDate,range)).length,
+    proposals:  TRACKER_DATA.filter(r=>_tfIn(r.proposalDate,range)).length,
+    won:        TRACKER_DATA.filter(r=>r.status==='Won'&&_tfIn(_tfRefDate(r),range)).length,
+    wonVal:     TRACKER_DATA.filter(r=>r.status==='Won'&&_tfIn(_tfRefDate(r),range)).reduce((s,r)=>s+r.amount,0),
+    lost:       TRACKER_DATA.filter(r=>r.status==='Lost'&&_tfIn(_tfRefDate(r),range)).length,
+    active:     TRACKER_DATA.filter(r=>!['Won','Lost'].includes(r.status)).length,
+    pipeline:   TRACKER_DATA.filter(r=>!['Won','Lost'].includes(r.status)).reduce((s,r)=>s+r.amount,0),
+  };
+  const conv=kpi.won+kpi.lost>0?Math.round(kpi.won/(kpi.won+kpi.lost)*100):0;
+
+  const periodBtns=PERIODS.map(p=>`<button onclick="_tfSet('period','${p.k}')" style="padding:5px 13px;border-radius:14px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid ${_TF.period===p.k?'#0057a0':'#e2e8f0'};background:${_TF.period===p.k?'#0057a0':'#fff'};color:${_TF.period===p.k?'#fff':'#64748b'};white-space:nowrap">${p.l}</button>`).join('');
+
+  const viewToggle=`<div style="display:flex;border:2px solid #e2e8f0;border-radius:10px;overflow:hidden">
+    <button onclick="_tfSet('view','list')" style="padding:5px 14px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${_TF.view==='list'?'#0057a0':'#fff'};color:${_TF.view==='list'?'#fff':'#64748b'}">☰ List</button>
+    <button onclick="_tfSet('view','kanban')" style="padding:5px 14px;font-size:10px;font-weight:700;cursor:pointer;border:none;background:${_TF.view==='kanban'?'#0057a0':'#fff'};color:${_TF.view==='kanban'?'#fff':'#64748b'}">⬛ Kanban</button>
+  </div>`;
+
+  const kpiCards=[
+    {icon:'📅',label:'Visits Planned',  val:kpi.svPlanned,   color:'#0057a0',bg:'#eff6ff',sub:'scheduled'},
+    {icon:'✅',label:'Visits Done',     val:kpi.svCompleted, color:'#0891b2',bg:'#ecfeff',sub:'completed'},
+    {icon:'📄',label:'Reports Out',     val:kpi.reportOut,   color:'#7c3aed',bg:'#f5f3ff',sub:'submitted'},
+    {icon:'📝',label:'Proposals Sent',  val:kpi.proposals,   color:'#d97706',bg:'#fffbeb',sub:'to client'},
+    {icon:'🏆',label:'Won',             val:kpi.won,         color:'#16a34a',bg:'#f0fdf4',sub:fk(kpi.wonVal)},
+    {icon:'❌',label:'Lost',            val:kpi.lost,        color:'#dc2626',bg:'#fef2f2',sub:'orders'},
+    {icon:'🔄',label:'In Pipeline',     val:kpi.active,      color:'#0057a0',bg:'#f8fafc',sub:fk(kpi.pipeline)},
+    {icon:'📊',label:'Win Rate',        val:conv+'%',        color:conv>=50?'#16a34a':'#d97706',bg:'#f8fafc',sub:`${kpi.won} of ${kpi.won+kpi.lost} closed`},
+  ].map(k=>`<div style="background:${k.bg};border:1.5px solid ${k.color}22;border-radius:12px;padding:11px 14px;flex:1;min-width:100px">
+    <div style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">${k.icon} ${k.label}</div>
+    <div style="font-size:22px;font-weight:800;color:${k.color};line-height:1.1">${k.val}</div>
+    <div style="font-size:10px;color:#94a3b8;margin-top:2px">${k.sub}</div>
+  </div>`).join('');
+
+  /* ── LIST VIEW ── */
+  const listView=(data)=>{
+    const tblHdr=`<tr style="background:#1e293b;color:#fff;position:sticky;top:0;z-index:2">
+      <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;min-width:180px">Client</th>
+      <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:700;min-width:130px">Job #</th>
+      <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:700;min-width:180px">Scope</th>
+      <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:700">SV Planned</th>
+      <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:700">SV Done</th>
+      <th style="padding:10px 8px;text-align:center;font-size:11px;font-weight:700">Proposal</th>
+      <th style="padding:10px 8px;text-align:right;font-size:11px;font-weight:700">Amount</th>
+      <th style="padding:10px 8px;text-align:left;font-size:11px;font-weight:700">Remarks / Flag</th>
+    </tr>`;
+
+    const stageGroups=STAGES.map(stage=>{
+      const rows=data.filter(r=>r.status===stage.key);
+      if(rows.length===0) return '';
+      const isExp=_TF.expanded.includes(stage.key);
+      const stageVal=rows.reduce((s,r)=>s+r.amount,0);
+      const dataRows=isExp?rows.map((row,ri)=>{
+        const od=overdueMsg(row);
+        const rowBg=ri%2===0?'#fff':'#f9fafb';
+        return `<tr style="background:${rowBg};border-bottom:1px solid #f1f5f9">
+          <td style="padding:9px 12px;font-size:12px;font-weight:600;color:#0f172a">${row.client}</td>
+          <td style="padding:9px 8px;font-size:11px;color:#64748b">${row.jobNum||'—'}</td>
+          <td style="padding:9px 8px;font-size:11px;color:#475569;max-width:200px">${(row.scope||'').substring(0,70)}${(row.scope||'').length>70?'…':''}</td>
+          <td style="padding:9px 8px;text-align:center;font-size:11px;color:#64748b">${fmtD(row.svPlanned)}</td>
+          <td style="padding:9px 8px;text-align:center;font-size:11px;color:${row.svCompleted?'#16a34a':'#94a3b8'}">${fmtD(row.svCompleted)}</td>
+          <td style="padding:9px 8px;text-align:center;font-size:11px;color:${row.proposalDate?'#0057a0':'#94a3b8'}">${fmtD(row.proposalDate)}</td>
+          <td style="padding:9px 8px;text-align:right;font-size:12px;font-weight:700;color:#059669">${fk(row.amount)}</td>
+          <td style="padding:9px 8px;font-size:11px;color:${od?'#dc2626':'#94a3b8'}">${od||row.remarks||'—'}</td>
+        </tr>`;
+      }).join(''):'';
+
+      return `<tbody>
+        <tr style="background:${stage.light};cursor:pointer;border-left:4px solid ${stage.color}" onclick="_tfToggle('${stage.key}')">
+          <td colspan="8" style="padding:10px 12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:12px;color:${stage.color}">${isExp?'▼':'▶'}</span>
+              <span style="font-size:13px;font-weight:800;color:${stage.color}">${stage.icon} ${stage.label}</span>
+              <span style="background:${stage.color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px">${rows.length} lead${rows.length>1?'s':''}</span>
+              ${stageVal>0?`<span style="font-size:11px;font-weight:700;color:${stage.color};margin-left:4px">${fk(stageVal)}</span>`:''}
+            </div>
+          </td>
+        </tr>
+        ${dataRows}
+      </tbody>`;
+    }).join('');
+
+    return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;overflow:auto;max-height:520px">
+      <table style="width:100%;border-collapse:collapse;min-width:900px">
+        <thead>${tblHdr}</thead>
+        ${stageGroups||'<tbody><tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">No tracker data loaded</td></tr></tbody>'}
+      </table>
+    </div>`;
+  };
+
+  /* ── KANBAN VIEW ── */
+  const kanbanView=(data)=>{
+    const cols=STAGES.map(stage=>{
+      const rows=data.filter(r=>r.status===stage.key);
+      const cards=rows.map(row=>{
+        const od=overdueMsg(row);
+        return `<div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid ${od?'#fca5a5':'#e2e8f0'};border-left:3px solid ${stage.color};box-shadow:0 1px 3px rgba(0,0,0,.05)">
+          ${od?`<div style="background:#fee2e2;color:#dc2626;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-bottom:6px">${od}</div>`:''}
+          <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:3px">${row.client}</div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:6px">${(row.scope||'').substring(0,60)}${(row.scope||'').length>60?'…':''}</div>
+          <div style="display:flex;align-items:center;justify-content:flex-end">
+            <span style="font-size:10px;font-weight:700;color:#059669">${fk(row.amount)}</span>
+          </div>
+          ${row.jobNum?`<div style="font-size:9px;color:#94a3b8;margin-top:4px">${row.jobNum}</div>`:''}
+          ${row.remarks&&['Won','Lost'].includes(row.status)?`<div style="font-size:9px;color:#dc2626;margin-top:4px">📝 ${row.remarks}</div>`:''}
+        </div>`;
+      }).join('');
+      const colVal=rows.reduce((s,r)=>s+r.amount,0);
+      return `<div style="flex-shrink:0;width:190px">
+        <div style="background:${stage.color};color:#fff;border-radius:8px 8px 0 0;padding:8px 12px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:11px;font-weight:700">${stage.icon} ${stage.label}</span>
+          <span style="background:rgba(255,255,255,.25);font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px">${rows.length}</span>
+        </div>
+        ${colVal>0?`<div style="background:${stage.light};padding:4px 12px;font-size:10px;font-weight:700;color:${stage.color};border:1px solid ${stage.color}22;border-top:none">${fk(colVal)}</div>`:''}
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;padding:8px;min-height:80px;max-height:460px;overflow-y:auto">
+          ${cards||`<div style="text-align:center;padding:18px 8px;color:#cbd5e1;font-size:11px">No leads</div>`}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:12px;scrollbar-width:thin">${cols}</div>`;
+  };
+
+  /* Month + Status filters */
+  const MONTHS_LBL=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthBtns=['<button onclick="_tfSet(\'month\',\'all\')" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid '+(_TF.month==='all'?'#0057a0':'#e2e8f0')+';background:'+(_TF.month==='all'?'#0057a0':'#fff')+';color:'+(_TF.month==='all'?'#fff':'#64748b')+'">All</button>',
+    ...MONTHS_LBL.map((m,i)=>{const v=String(i+1).padStart(2,'0');const act=_TF.month===v;return '<button onclick="_tfSet(\'month\',\''+v+'\')" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid '+(act?'#0057a0':'#e2e8f0')+';background:'+(act?'#0057a0':'#fff')+';color:'+(act?'#fff':'#64748b')+'">'+m+'</button>';})
+  ].join('');
+  const statusFilterBtns=STAGES.map(s=>{
+    const act=_TF.statuses.includes(s.key);
+    return '<button onclick="_tfToggleStatus(\''+s.key+'\')" style="padding:4px 11px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid '+(act?s.color:'#e2e8f0')+';background:'+(act?s.color:'#fff')+';color:'+(act?'#fff':'#64748b')+';white-space:nowrap">'+s.icon+' '+s.label+'</button>';
+  }).join('');
+
+  /* Apply period + month + status filters to data — the table must show the
+     same rows the KPI cards above are counting, or "Won: 3" with a stage
+     group that lists 20 leads looks like a bug. */
+  const filteredData = TRACKER_DATA.filter(r=>{
+    if(!_tfIn(_tfRefDate(r),range)) return false;
+    if(_TF.month!=='all'){
+      const refDate=_tfRefDate(r);
+      if(!refDate) return false;
+      const m=String(new Date(refDate).getMonth()+1).padStart(2,'0');
+      if(m!==_TF.month) return false;
+    }
+    if(_TF.statuses.length>0 && !_TF.statuses.includes(r.status)) return false;
+    return true;
+  });
+
+  mc.innerHTML=`<div style="padding:16px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div>
+        <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px">🗺️ Site &amp; Sales Tracker</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:1px">Visit → Report → Proposal → Negotiation → Order</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px">Period</span>
+        ${periodBtns}
+        ${viewToggle}
+      </div>
+    </div>
+    <!-- Month filter row -->
+    <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">Month</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${monthBtns}</div>
+    </div>
+    <!-- Status filter row -->
+    <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap">Stage</span>
+      ${_TF.statuses.length>0?'<button onclick="_tfClearStatuses()" style="padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid #dc2626;background:#fee2e2;color:#dc2626">✕ Clear</button>':''}
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${statusFilterBtns}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${kpiCards}</div>
+    ${_TF.view==='list'?listView(filteredData):kanbanView(filteredData)}
+  </div>`;
+
+  /* Auto-expand all non-empty stages in list view on first load */
+  if(_TF.view==='list' && _TF.expanded.length===0){
+    STAGES.forEach(s=>{ if(TRACKER_DATA.some(r=>r.status===s.key)) _TF.expanded.push(s.key); });
+    if(TRACKER_DATA.length) renderTracker(mc);
+  }
 }
 
 function renderSalesMonitor(mc){
