@@ -5068,13 +5068,23 @@ function _tfRange(p){
   else return null;
   return {s,e:now};
 }
+// Strict: the date must actually exist. At "All Time" (range===null) this
+// still requires dateStr to be set — a blank date isn't "within all time",
+// it's just blank. Used for the presence KPIs (Visits Planned/Done, Reports
+// Out, Proposals Sent) where the whole point is counting rows that *have*
+// that date filled in.
 function _tfIn(dateStr,range){
-  if(!range) return true;
   if(!dateStr) return false;
+  if(!range) return true;
   const d=new Date(dateStr);
   return d>=range.s && d<=range.e;
 }
 function _tfRefDate(r){ return r.svPlanned||r.svCompleted||r.reportDate||r.proposalDate||r.date; }
+// Lenient: is this row relevant to the selected period? At "All Time" every
+// row counts regardless of whether it has any date at all (status alone is
+// enough) — used for Won/Lost totals and the table/list filter, where a row
+// with no dates recorded shouldn't just vanish.
+function _tfRowInPeriod(r,range){ return !range || _tfIn(_tfRefDate(r),range); }
 function _tfSet(key,val){ _TF[key]=val; renderTracker(document.getElementById('mainContent')); }
 function _tfToggleStatus(s){
   const i=_TF.statuses.indexOf(s);
@@ -5135,9 +5145,9 @@ function renderTracker(mc){
     svCompleted:TRACKER_DATA.filter(r=>_tfIn(r.svCompleted,range)).length,
     reportOut:  TRACKER_DATA.filter(r=>_tfIn(r.reportDate,range)).length,
     proposals:  TRACKER_DATA.filter(r=>_tfIn(r.proposalDate,range)).length,
-    won:        TRACKER_DATA.filter(r=>r.status==='Won'&&_tfIn(_tfRefDate(r),range)).length,
-    wonVal:     TRACKER_DATA.filter(r=>r.status==='Won'&&_tfIn(_tfRefDate(r),range)).reduce((s,r)=>s+r.amount,0),
-    lost:       TRACKER_DATA.filter(r=>r.status==='Lost'&&_tfIn(_tfRefDate(r),range)).length,
+    won:        TRACKER_DATA.filter(r=>r.status==='Won'&&_tfRowInPeriod(r,range)).length,
+    wonVal:     TRACKER_DATA.filter(r=>r.status==='Won'&&_tfRowInPeriod(r,range)).reduce((s,r)=>s+r.amount,0),
+    lost:       TRACKER_DATA.filter(r=>r.status==='Lost'&&_tfRowInPeriod(r,range)).length,
     active:     TRACKER_DATA.filter(r=>!['Won','Lost'].includes(r.status)).length,
     pipeline:   TRACKER_DATA.filter(r=>!['Won','Lost'].includes(r.status)).reduce((s,r)=>s+r.amount,0),
   };
@@ -5270,7 +5280,7 @@ function renderTracker(mc){
      same rows the KPI cards above are counting, or "Won: 3" with a stage
      group that lists 20 leads looks like a bug. */
   const filteredData = TRACKER_DATA.filter(r=>{
-    if(!_tfIn(_tfRefDate(r),range)) return false;
+    if(!_tfRowInPeriod(r,range)) return false;
     if(_TF.month!=='all'){
       const refDate=_tfRefDate(r);
       if(!refDate) return false;
