@@ -4697,27 +4697,6 @@ function renderActionCentre(mc){
     </div>`;
     mc.innerHTML=`
     <div style="padding:14px 18px 10px;height:100%;display:flex;flex-direction:column;box-sizing:border-box;gap:0">
-      <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
-        <div style="width:6px;height:40px;background:linear-gradient(180deg,${TC.color},${TC.color}99);border-radius:4px;margin-right:12px;flex-shrink:0"></div>
-        <div style="flex:1">
-          <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px;line-height:1.1">⚡ Action Centre</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:1px">Contract renewals · Invoices · Payments · Cash Inflow</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:10px">
-        ${TAB_CFG.map((tb,i)=>{
-          const on=_AC.tab===i;
-          return `<button onclick="_acSetTab(${i})"
-            style="display:flex;align-items:center;gap:6px;
-                   background:${on?tb.color:tb.light};color:${on?'#fff':tb.color};
-                   border:2px solid ${on?tb.color:tb.border};
-                   border-bottom:${on?'2px solid '+tb.color:'2px solid transparent'};
-                   border-radius:8px 8px 0 0;padding:8px 18px;font-size:12px;font-weight:700;
-                   cursor:pointer;white-space:nowrap;margin-bottom:-2px;
-                   box-shadow:${on?'0 -2px 8px '+tb.color+'22':''};transition:all .15s"
-            >${tb.icon} ${tb.label}</button>`;
-        }).join('')}
-      </div>
       ${modeBar}
       <div style="flex:1;min-height:0">${_acCashInflowBody()}</div>
     </div>`;
@@ -4809,32 +4788,6 @@ function renderActionCentre(mc){
 
   mc.innerHTML=`
   <div style="padding:14px 18px 10px;height:100%;display:flex;flex-direction:column;box-sizing:border-box;gap:0">
-
-    <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
-      <div style="width:6px;height:40px;background:linear-gradient(180deg,${TC.color},${TC.color}99);border-radius:4px;margin-right:12px;flex-shrink:0"></div>
-      <div style="flex:1">
-        <div style="font-size:19px;font-weight:800;color:#0f172a;letter-spacing:-.4px;line-height:1.1">⚡ Action Centre</div>
-        <div style="font-size:11px;color:#94a3b8;margin-top:1px">Contract renewals · Invoices · Payments · Cash Inflow</div>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:4px;border-bottom:2px solid #e2e8f0;margin-bottom:10px">
-      ${TAB_CFG.map((tb,i)=>{
-        const on=_AC.tab===i;
-        return `<button onclick="_acSetTab(${i})"
-          style="display:flex;align-items:center;gap:6px;
-                 background:${on?tb.color:tb.light};
-                 color:${on?'#fff':tb.color};
-                 border:2px solid ${on?tb.color:tb.border};
-                 border-bottom:${on?'2px solid '+tb.color:'2px solid transparent'};
-                 border-radius:8px 8px 0 0;
-                 padding:8px 18px;font-size:12px;font-weight:700;
-                 cursor:pointer;white-space:nowrap;margin-bottom:-2px;
-                 box-shadow:${on?'0 -2px 8px '+tb.color+'22':''};
-                 transition:all .15s"
-          >${tb.icon} ${tb.label}</button>`;
-      }).join('')}
-    </div>
 
     <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
       ${grpBar}
