@@ -1390,16 +1390,15 @@ function renderSalesOverview(mc) {
     const g = r.g;
     if(!agg[g]) return;
     if(ACTIVE_GRP!=='all' && g!==ACTIVE_GRP) return;
-    // invPlan: filter by Invoice Plan Date year (a 2024 contract can have 2026 planned invoices)
-    if(r.invPlan) {
-      const pYear = r.planDate ? String(new Date(r.planDate).getFullYear()) : null;
-      if((soYear==='all' || pYear===soYear) && monthOk(r.planDate)) agg[g].invPlan += r.invPlan;
-    }
-    // invRaised: filter by Invoice Date year (when the invoice was actually raised)
-    if(r.iAmt) {
-      const iYear = r.iDate ? String(new Date(r.iDate).getFullYear()) : null;
-      if((soYear==='all' || iYear===soYear) && monthOk(r.iDate)) agg[g].invRaised += r.iAmt;
-    }
+    // Both invPlan and invRaised bucket by the SAME date (Invoice Plan Date,
+    // falling back to Invoice Date when there's no plan) — matching Action
+    // Centre's Invoice/Payment Tracking so "invoiced in 2026" means the same
+    // set of rows everywhere instead of each view picking its own date field.
+    const _ipd = r.invPlanDate || r.iDate;
+    const _ipy = _ipd ? String(new Date(_ipd).getFullYear()) : null;
+    const _inYr = (soYear==='all' || _ipy===soYear) && monthOk(_ipd);
+    if(r.invPlan && _inYr) agg[g].invPlan += r.invPlan;
+    if(r.iAmt && _inYr) agg[g].invRaised += r.iAmt;
   });
 
   // ── 2. MoM DATA — ORDERS RECEIVED per month (by startDate) ──
@@ -2897,8 +2896,11 @@ async function generatePPT(scope){
         });
         INV_DATA.forEach(r=>{
           const gn=r.g;if(!agg[gn])return;
-          if(r.invPlan){const py=r.planDate?String(new Date(r.planDate).getFullYear()):null;if(curYr==='all'||py===curYr)agg[gn].invPlan+=r.invPlan;}
-          if(r.iAmt){const iy=r.iDate?String(new Date(r.iDate).getFullYear()):null;if(curYr==='all'||iy===curYr)agg[gn].invRaised+=r.iAmt;}
+          const _ipd=r.invPlanDate||r.iDate;
+          const _ipy=_ipd?String(new Date(_ipd).getFullYear()):null;
+          const _inYr=curYr==='all'||_ipy===curYr;
+          if(r.invPlan&&_inYr)agg[gn].invPlan+=r.invPlan;
+          if(r.iAmt&&_inYr)agg[gn].invRaised+=r.iAmt;
         });
         let tRec=0,tV=0,tP=0,tR=0;
         GRPS.forEach(g=>{tRec+=agg[g].received;tV+=agg[g].orderVal;tP+=agg[g].invPlan;tR+=agg[g].invRaised;});
@@ -4311,16 +4313,22 @@ function _acPaymentsBody(){
     if(r.iAmt===0) return false;                          // must be invoiced
     if(f.status==='open'   && r.payDue<=0) return false;  // open = outstanding
     if(f.status==='closed' && r.payDue>0)  return false;  // closed = collected
-    const dt = r.payDueDate || r.iDate;
+    // Year/Month bucket by Invoice Plan Date (fallback Invoice Date) — same
+    // basis as Invoice Tracking and Sales Overview, so "2026" means the same
+    // set of invoices everywhere and the totals tie out. The Range quick
+    // filter (Overdue / Next 30 Days / ...) stays on Payment Due Date since
+    // that's genuinely about when payment is due, not when the invoice was planned.
+    const dtYear = r.invPlanDate || r.iDate;
     if(f.year!=='all'){
-      if(!dt || dt.split('-')[0]!==f.year) return false;
+      if(!dtYear || dtYear.split('-')[0]!==f.year) return false;
     }
     if(f.month!=='all'){
-      if(!dt) return false; // no due/invoice date — can't belong to a specific month
-      const m = parseInt(dt.split('-')[1]);
+      if(!dtYear) return false; // no plan/invoice date — can't belong to a specific month
+      const m = parseInt(dtYear.split('-')[1]);
       if(tillMode ? m>moNum : m!==moNum) return false;
     }
-    if(!_acInRange(dt, f.range)) return false;
+    const dtRange = r.payDueDate || r.iDate;
+    if(!_acInRange(dtRange, f.range)) return false;
     return true;
   }).sort((a,b)=>{
     if(a.payDue>0 && b.payDue>0) return (b.daysOD||0)-(a.daysOD||0); // overdue first
